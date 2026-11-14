@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>标注大纲 · 交互预览</title>
+  <link rel="stylesheet" href="/preview/host.css">
+  <link rel="stylesheet" href="/src/index.css">
+</head>
+<body>
+  <header class="preview-topbar"><div class="preview-brand"><span class="preview-brand__icon">思</span> 标注大纲 <span class="preview-tag">插件交互预览</span></div><div id="topbar"></div><button id="theme-toggle">切换深浅色</button></header>
+  <div class="preview-layout">
+    <nav class="preview-rail" aria-label="导航"><span>☰</span><span class="preview-rail__active">▤</span><span>⌕</span><span>◇</span></nav>
+    <main class="protyle" id="preview-editor">
+      <div class="preview-breadcrumb">阅读笔记 <span>/</span> 认知与学习 <span>/</span> 如何把阅读变成自己的知识</div>
+      <div class="preview-document">
+        <div class="preview-kicker">READING NOTES <span>·</span> 阅读与思考</div>
+        <h1 id="document-title" contenteditable="true">如何把阅读变成自己的知识</h1>
+        <div class="preview-meta">阅读笔记 <span>·</span> 约 5 分钟 <span>·</span> 在文字中留下思考的痕迹</div>
+        <div class="preview-rule"></div>
+        <div class="protyle-wysiwyg" id="wysiwyg">
+          <div data-node-id="20261113090001-intro00" data-type="NodeParagraph"><div contenteditable="true">阅读不只是划过一行行文字，更是与作者展开对话。<span data-type="mark">真正的阅读，是让新的想法与已有的经验发生连接。</span></div></div>
+          <div data-node-id="20261113090002-heading" data-type="NodeHeading" data-subtype="h1"><div contenteditable="true">01 阅读，从主动思考开始</div></div>
+          <div data-node-id="20261113090003-paragra" data-type="NodeParagraph"><div contenteditable="true">面对一本新书，我们常常急于从第一页读到最后一页。但完成阅读，并不意味着完成理解。<span data-type="text" style="background-color:var(--b3-font-background12)">带着问题进入文本，比追求阅读速度更重要。</span></div></div>
+          <div data-node-id="20261113090004-heading" data-type="NodeHeading" data-subtype="h2"><div contenteditable="true">在阅读之前，提出一个问题</div></div>
+          <div data-node-id="20261113090005-paragra" data-type="NodeParagraph"><div contenteditable="true">不妨先问自己：这本书想解决什么问题？它与我当下的困惑有什么关系？<span data-type="text" style="background-color:var(--b3-font-background4)">问题像一根线，把分散的信息串成有意义的整体。</span></div></div>
+          <div data-node-id="20261113090006-paragra" data-type="NodeParagraph"><div contenteditable="true">这一段可以用来体验连续标注。开启工具栏中的“连续标注”，用鼠标选中这句话，试着换一种颜色，再标注下一句。</div></div>
+          <div data-node-id="20261113090007-heading" data-type="NodeHeading" data-subtype="h2"><div contenteditable="true">给重要的文字留一个记号</div></div>
+          <div data-node-id="20261113090008-paragra" data-type="NodeParagraph"><div contenteditable="true">不是所有文字都需要标注。<span data-type="u">只标记那些让你停下来思考的内容。</span> 当一个观点让你产生共鸣、疑问或新的联想时，记号才有了意义。</div></div>
+          <div data-node-id="20261113090009-heading" data-type="NodeHeading" data-subtype="h1"><div contenteditable="true">02 让知识长出自己的结构</div></div>
+          <div data-node-id="20261113090010-paragra" data-type="NodeParagraph"><div contenteditable="true">零散的标注只是起点，结构化的回顾才让理解沉淀。<span data-type="text" style="background-color:var(--b3-font-background3)">回到标题层级中，你会看见观点之间的关系。</span></div></div>
+          <div data-node-id="20261113090011-heading" data-type="NodeHeading" data-subtype="h2"><div contenteditable="true">用自己的话，重新表达</div></div>
+          <div data-node-id="20261113090012-paragra" data-type="NodeParagraph"><div contenteditable="true"><span data-type="text" style="background-color:var(--b3-font-background9)">能够清楚地解释一个想法，是理解它的开始。</span> 关上书，试着用自己的语言描述刚才读到的观点，再想想它能如何用于生活。</div></div>
+        </div>
+      </div>
+    </main>
+    <aside id="dock"></aside>
+  </div>
+  <footer class="preview-footer">交互沙盒：使用真实插件界面与事件处理，思源编辑器和内核接口由本地模拟。</footer>
+  <div id="messages" role="alert"></div>
+  <script type="module" src="/preview/app.js"></script>
+</body>
+</html>

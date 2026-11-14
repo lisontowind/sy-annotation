@@ -1,0 +1,9 @@
+node_modules/
+.npm-cache/
+.reference/
+.test-build/
+test-results/
+dist/
+artifacts/
+docs/marketplace/REVIEW.md
+docs/marketplace/icon-master.png

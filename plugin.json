@@ -1,0 +1,16 @@
+{
+  "name": "sy-annotation",
+  "author": "Lisontowind",
+  "url": "https://github.com/lisontowind/sy-annotation",
+  "version": "0.3.8",
+  "minAppVersion": "3.2.0",
+  "backends": ["all"],
+  "frontends": ["desktop", "browser-desktop", "desktop-window"],
+  "disabledInPublish": true,
+  "displayName": {"default": "Annotation Outline", "zh-CN": "标注大纲"},
+  "description": {"default": "Review highlights by heading, annotate continuously, combine filters and preview batch style changes.", "zh-CN": "按章节回顾文档标注，支持连续划选、组合筛选与批量改样式，点击卡片跳转原文。"},
+  "readme": {"default": "README.en.md", "zh-CN": "README.md"},
+  "icon": "icon.png",
+  "preview": "preview.png",
+  "keywords": ["标注", "高亮", "大纲", "连续标注", "阅读", "批量样式", "highlight", "outline", "annotation", "reading"]
+}

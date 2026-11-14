@@ -2,7 +2,7 @@
   "name": "sy-annotation",
   "author": "Lisontowind",
   "url": "https://github.com/lisontowind/sy-annotation",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "minAppVersion": "3.2.0",
   "backends": ["all"],
   "frontends": ["desktop", "browser-desktop", "desktop-window"],

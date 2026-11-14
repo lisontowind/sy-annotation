@@ -1,10 +1,9 @@
 import { build, context } from "esbuild";
-import { mkdir, copyFile, readdir, cp } from "node:fs/promises";
+import { mkdir, copyFile, readdir } from "node:fs/promises";
 
 await mkdir("dist/i18n", { recursive: true });
 for (const file of ["plugin.json", "README.md", "README.en.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "icon.png", "preview.png"])
   await copyFile(file, `dist/${file}`);
-await cp("docs/assets", "dist/docs/assets", { recursive: true });
 await mkdir("dist/docs", { recursive: true });
 await copyFile("docs/DEVELOPMENT.md", "dist/docs/DEVELOPMENT.md");
 await copyFile("src/index.css", "dist/index.css");

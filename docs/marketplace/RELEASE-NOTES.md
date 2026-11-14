@@ -1,3 +1,19 @@
+# 标注大纲 / Annotation Outline 0.3.9
+
+## 中文
+
+- 中英文介绍图与使用图改为固定版本的 GitHub 链接，需要联网加载。
+- 安装包移除介绍图片，仅保留集市图标和封面，减少下载与同步体积。
+- 打包使用安装文件清单，避免旧构建目录中的图片重新混入安装包。
+
+## English
+
+- Documentation screenshots now load from GitHub URLs pinned to an existing release. An internet connection is required to view them.
+- Removed documentation images from the installation archive while retaining the marketplace icon and cover.
+- Added an explicit package file list to exclude stale build assets.
+
+---
+
 # 标注大纲 / Annotation Outline 0.3.8
 
 ## 中文

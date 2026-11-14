@@ -1,5 +1,9 @@
 # 标注大纲 · 开发与验证说明
 
+## 0.3.9 更新
+
+中英文 README 的介绍与使用图改为固定到 GitHub 0.3.8 标签的 HTTPS 链接，需要联网加载。源码仓库继续保留原始图片；安装包仅保留根目录的图标与集市封面。打包使用明确的安装文件清单，旧 `dist/docs/assets` 即使存在也不会混入 ZIP。输出为 `artifacts/sy-annotation-0.3.9.zip` 与 `artifacts/package.zip`。插件运行时代码沿用 0.3.8。
+
 ## 0.3.8 更新
 
 新增中英文界面和配套集市材料。界面语言由 `src/i18n.ts` 读取思源 `window.siyuan.config.lang`；中文标签为回退文本，英文消息位于 `i18n/en_US.json`，编译时打入主入口与 Worker。Worker 请求显式传递当前语言。语言变化按思源提示重启后生效，自定义工具名称与正文不参与翻译。

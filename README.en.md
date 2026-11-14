@@ -6,9 +6,9 @@ Annotation Outline is a desktop plugin for SiYuan Note. It collects highlights, 
 
 [简体中文](README.md) · [Development and validation (Chinese)](docs/DEVELOPMENT.md)
 
-![Annotation Outline overview](docs/assets/en/overview.png)
+![Annotation Outline overview](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/overview.png)
 
-> Images were captured in an isolated SiYuan 3.8.10 test workspace, using the real editor, built-in themes and dedicated sample documents. Screenshots use SiYuan's desktop browser interface. Appearance varies with the SiYuan version and theme.
+> Images were captured in an isolated SiYuan 3.8.10 test workspace, using the real editor, built-in themes and dedicated sample documents. Screenshots use SiYuan's desktop browser interface. Appearance varies with the SiYuan version and theme. Documentation images load from pinned GitHub URLs and require an internet connection.
 
 ## Features
 
@@ -30,7 +30,7 @@ Open a document and the Annotation Outline dock on the right. Select a style in 
 
 Choosing a style alone does not change an existing selection or enable continuous annotation. The dock's pen button opens a floating toolbar; the SiYuan top-bar button and shortcut can also toggle it.
 
-![Choose a style and annotate](docs/assets/en/usage-01-annotate.png)
+![Choose a style and annotate](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-01-annotate.png)
 
 ## 2. Review in context
 
@@ -38,7 +38,7 @@ Cards are organized under their headings. Empty branches are hidden. Search anno
 
 The crosshair locates the annotation under the cursor or a nearby annotation in the same section. Double-click to enable automatic following. If filters hide the target, the plugin asks you to clear them without changing them automatically.
 
-![Review, search and locate annotations](docs/assets/en/usage-02-outline.png)
+![Review, search and locate annotations](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-02-outline.png)
 
 ## 3. Filter and change styles
 
@@ -51,7 +51,7 @@ Open “Batch restyle” to choose a source style, target tool, replacement mode
 
 You can also right-click a card to change it or prefill a batch for its exact style. A batch is saved as one native SiYuan undo operation. Preparation and validation can be canceled; once saving starts, wait for completion. Large batches take longer to save.
 
-![Combined filters and batch previews](docs/assets/en/usage-03-filter-batch.png)
+![Combined filters and batch previews](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-03-filter-batch.png)
 
 ## 4. Customize your tools
 
@@ -61,17 +61,17 @@ The inherit option copies the single style most recently selected in SiYuan's te
 
 Editing or deleting a tool affects future actions. Existing document formatting remains unchanged, including after uninstalling the plugin. Use card replacement or batch changes to update existing annotations.
 
-![Customize annotation tools](docs/assets/en/usage-04-tools.png)
+![Customize annotation tools](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-04-tools.png)
 
 ## Light and dark appearances
 
 Default tools use SiYuan theme color variables. Inherited or explicitly fixed colors retain their saved values. Third-party themes can produce different results.
 
-![SiYuan built-in dark theme](docs/assets/en/interface-dark.png)
+![SiYuan built-in dark theme](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/interface-dark.png)
 
 ## Installation and compatibility
 
-Current version: **0.3.8**. Declared minimum SiYuan version: **3.2.0**. Native annotation and saving behavior was previously validated in an isolated SiYuan **3.8.10** workspace. The new Chinese and English screenshots come from that workspace, with continuous annotations checked against native saved content. Demo-host browser regression checks also pass. Older versions show an error if a necessary style API is unavailable.
+Current version: **0.3.9**. Declared minimum SiYuan version: **3.2.0**. Native annotation and saving behavior was previously validated in an isolated SiYuan **3.8.10** workspace. The new Chinese and English screenshots come from that workspace, with continuous annotations checked against native saved content. Demo-host browser regression checks also pass. Older versions show an error if a necessary style API is unavailable.
 
 **Chinese and English interfaces are supported.** The plugin follows SiYuan's interface language. Change SiYuan's language and restart as prompted. The sidebar, toolbar, filters, batch changes, tool settings and messages are localized. Custom tool names and document content stay as you wrote them.
 

@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
@@ -60,12 +61,12 @@ try {
   await caret("p40", 1);
   await page.waitForFunction((key) => document.querySelector(".sya-card.is-current")?.dataset.annotationKey === key, key);
   await page.locator(".sya-locate").dblclick();
-  await page.locator(".sya-style-filter").selectOption("yellow");
+  await selectStyle(page, ".sya-style-filter", "yellow");
   await page.waitForFunction(() => !document.querySelector('.sya-tree[aria-busy="true"]'));
   await page.locator(".sya-locate").click();
   assert.match(await page.locator("#messages").textContent(), /清除筛选/);
-  assert.equal(await page.locator(".sya-style-filter").inputValue(), "yellow");
-  await page.locator(".sya-style-filter").selectOption("all");
+  assert.equal(await page.locator(".sya-style-filter").getAttribute("data-value"), "yellow");
+  await selectStyle(page, ".sya-style-filter", "all");
   await page.evaluate(() => {
     const source = document.createElement("div"); source.innerHTML = window.annotationPreview.sourceDOM;
     document.querySelector("#wysiwyg").append(source.querySelector('[data-node-id="p41"]'));

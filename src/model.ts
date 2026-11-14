@@ -1,5 +1,6 @@
 import { parseFragment, type DefaultTreeAdapterMap } from "parse5";
 import { t, toolLabel } from "./i18n";
+import { isNativeToolId, matchesNativeStyle, type NativeStyleRef } from "./native-styles";
 
 export type NativeMark = "mark" | "u" | "strong" | "em" | "s" | "sup" | "sub";
 export interface AnnotationTool {
@@ -8,6 +9,8 @@ export interface AnnotationTool {
   color: string;
   marks: NativeMark[];
   styles: Record<string, string>;
+  nativeRef?: NativeStyleRef;
+  hidden?: boolean;
 }
 export type AnnotationStyle = AnnotationTool;
 export interface ToolConfig {
@@ -59,7 +62,7 @@ export const STYLES: AnnotationTool[] = [
     styles: {
       "text-decoration-line": "underline",
       "text-decoration-style": "wavy",
-      "text-decoration-color": "#c65c68",
+      "text-decoration-color": "var(--b3-font-color1)",
     },
   },
 ];
@@ -162,7 +165,7 @@ export function loadToolConfig(
   return {
     version: 1,
     tools,
-    selectedId: tools.some((tool) => tool.id === selected)
+    selectedId: isNativeToolId(selected) || tools.some((tool) => tool.id === selected)
       ? selected
       : (tools[0]?.id ?? ""),
   };
@@ -286,10 +289,10 @@ function describe(
         (!tool.marks.includes("u") ||
           (tool.styles["text-decoration-style"] || "solid") ===
             (styles["text-decoration-style"] || "solid")) &&
-        Object.entries(tool.styles).every(
+        (tool.nativeRef ? matchesNativeStyle(styles, tool.nativeRef) : Object.entries(tool.styles).every(
           ([key, value]) =>
             canonicalValue(styles[key] ?? "") === canonicalValue(value),
-        ),
+        )),
     )
     .sort(
       (a, b) =>

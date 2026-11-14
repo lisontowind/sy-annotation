@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { startPreview } from "./preview.mjs";
@@ -15,8 +16,8 @@ try {
   await page.locator(".sya-manage-tools").click();
   const listStrip = await page.locator(".sya-manager__select").first().evaluate((node) => getComputedStyle(node, "::before").backgroundImage);
   assert.match(listStrip, /linear-gradient/);
-  await page.locator('[data-field="color"]').fill("#ff0000");
-  assert.equal(await page.locator(".sya-manager__tool.is-selected .sya-manager__select").evaluate((n) => n.style.getPropertyValue("--sya-mark-foreground")), "rgb(255, 0, 0)");
+  await selectStyle(page, '[data-color-property="color"]', "native:color:1");
+  assert.equal(await page.locator(".sya-manager__tool.is-selected .sya-manager__select").evaluate(node => node.style.getPropertyValue("--sya-mark-foreground")), "var(--b3-font-color1)");
   await page.getByRole("button", { name: "关闭工具设置", exact: true }).click();
   await page.evaluate(() => {
     const preview = window.annotationPreview;
@@ -32,9 +33,9 @@ try {
     preview.bus.emit("switch-protyle", { protyle: preview.protyle });
   });
   await ready(4);
-  await page.locator(".sya-style-filter").selectOption("yellow");
+  await selectStyle(page, ".sya-style-filter", "yellow");
   await page.waitForFunction(() => document.querySelector(".sya-tree-label")?.textContent.includes("找到 3 处"));
-  await page.locator(".sya-style-filter").selectOption("all");
+  await selectStyle(page, ".sya-style-filter", "all");
   await page.locator(".sya-more-filters").click();
   const root = page.locator(".sya-filter-dialog .sya-rule-group").first();
   await root.locator(":scope > .sya-rule-actions .sya-add-group").click();
@@ -43,6 +44,7 @@ try {
   for (const tool of ["yellow", "blue"]) {
     await nested.locator(":scope > .sya-rule-actions .sya-add-condition").click();
     const row = nested.locator(":scope > .sya-rule-condition").last();
+    await row.locator(".sya-rule-field").selectOption("tool");
     await row.locator(".sya-rule-value").selectOption(tool);
   }
   await root.locator(":scope > .sya-rule-actions .sya-add-condition").click();
@@ -82,7 +84,7 @@ try {
   await page.locator(".sya-search__input").fill("筛选目标");
   await page.waitForFunction(() => document.querySelectorAll(".sya-card").length === 1);
   await page.locator(".sya-open-bulk").click();
-  await page.locator(".sya-batch-target").selectOption("wave");
+  await selectStyle(page, ".sya-batch-target", "wave");
   await page.locator(".sya-batch-scope").selectOption("filtered");
   await page.waitForFunction(() => document.querySelector(".sya-batch-execute")?.textContent === "修改 1 处" && !document.querySelector(".sya-batch-execute").disabled);
   await page.screenshot({ path: "test-results/bulk-preview-v3.png" });
@@ -99,7 +101,7 @@ try {
 
   // Invalidate a prepared batch if the source changes; no write is allowed.
   await page.locator(".sya-open-bulk").click();
-  await page.locator(".sya-batch-target").selectOption("blue");
+  await selectStyle(page, ".sya-batch-target", "blue");
   await page.waitForFunction(() => !document.querySelector(".sya-batch-execute").disabled);
   const beforeStale = await transactions();
   await page.evaluate(() => {
@@ -127,7 +129,7 @@ try {
   assert.ok(await page.locator(".protyle-wysiwyg [data-node-id]").count() < 20);
   const reads = await page.evaluate(() => window.annotationPreview.fullReads);
   await page.locator(".sya-open-bulk").click();
-  await page.locator(".sya-batch-target").selectOption("wave");
+  await selectStyle(page, ".sya-batch-target", "wave");
   await page.waitForFunction(() => document.querySelector(".sya-batch-execute")?.textContent === "修改 3000 处" && !document.querySelector(".sya-batch-execute").disabled, null, { timeout: 120000 });
   const beforeLong = await transactions();
   await page.locator(".sya-batch-execute").click();

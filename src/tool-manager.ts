@@ -6,6 +6,10 @@ import {
 } from "./model";
 import { request } from "./api";
 import { paintStrip } from "./appearance";
+import { ColorField } from "./color-field";
+import { browserColor } from "./theme-colors";
+import { nativeDefaultGroup, nativeStyles } from "./native-styles";
+import { StylePicker } from "./style-picker";
 import {
   button,
   element,
@@ -14,7 +18,7 @@ import {
   toolAccentColor,
 } from "./ui";
 
-/** Snapshot exactly one most-recent native appearance entry; resolve CSS variables now, not on later preset edits. */
+/** Copy one native entry without flattening its theme expressions into computed RGB values. */
 export async function inheritCurrentStyle(): Promise<
   Pick<AnnotationTool, "marks" | "styles" | "color">
 > {
@@ -46,20 +50,6 @@ export async function inheritCurrentStyle(): Promise<
     throw new Error(
       t("当前样式是清除格式或不支持继承的类型，请先在思源面板选择颜色或文字效果"),
     );
-  const probe = document.createElement("span");
-  probe.textContent = "Aa";
-  probe.style.position = "fixed";
-  probe.style.visibility = "hidden";
-  for (const [key, value] of Object.entries(styles))
-    probe.style.setProperty(key, value);
-  document.body.append(probe);
-  try {
-    const computed = getComputedStyle(probe);
-    for (const key of Object.keys(styles))
-      styles[key] = computed.getPropertyValue(key).trim();
-  } finally {
-    probe.remove();
-  }
   const color =
     styles["text-decoration-color"] ||
     styles.color ||
@@ -82,26 +72,41 @@ export class ToolManager {
   private draft!: AnnotationTool;
   private inherit = element("input", "");
   private fields = new Map<string, HTMLInputElement | HTMLSelectElement>();
+  private colors = new Map<string, ColorField>();
   private marks = new Map<NativeMark, HTMLInputElement>();
   private generation = 0;
   private closed = false;
+  private unsubscribe: () => void;
+  private nativePicker?: StylePicker;
   constructor(
     tools: AnnotationTool[],
     private commit: (tools: AnnotationTool[]) => Promise<void>,
     id?: string,
     create = false,
+    repair?: () => void,
   ) {
     this.tools = structuredClone(tools);
     const heading = element("div", "sya-manager__header");
-    heading.append(
-      element("strong", "", t("标注工具设置")),
+    const actions = element("div", "sya-manager__actions");
+    actions.append(
       button("sya-icon-button", t("关闭工具设置"), icon("close"), () =>
         this.close(),
       ),
     );
+    heading.append(element("strong", "", t("标注工具设置")), actions);
     const layout = element("div", "sya-manager__layout");
     layout.append(this.list, this.form);
     this.element.append(heading, layout);
+    if (repair) {
+      const advanced = element("details", "sya-manager__advanced");
+      advanced.append(element("summary", "", t("旧样式迁移")), button("sya-button sya-repair-colors", t("修复旧颜色"), t("修复旧颜色"), repair));
+      this.element.append(advanced);
+    }
+    this.unsubscribe = nativeStyles.subscribe(() => {
+      nativeStyles.applyScope(this.element);
+      this.nativePicker?.update(nativeStyles.tools, ""); this.updatePreview();
+    });
+    nativeStyles.applyScope(this.element);
     this.element.addEventListener("cancel", () => this.close());
     document.body.append(this.element);
     if (this.element.showModal) this.element.showModal();
@@ -122,8 +127,11 @@ export class ToolManager {
     this.generation++;
     this.draft = structuredClone(tool);
     this.fields.clear();
+    for (const color of this.colors.values()) color.destroy();
+    this.colors.clear();
     this.marks.clear();
     this.form.replaceChildren();
+    this.nativePicker?.destroy();
     this.renderList();
     const addField = (key: string, label: string, value: string) => {
       const row = element("label", "sya-field");
@@ -133,46 +141,33 @@ export class ToolManager {
       input.dataset.field = key;
       input.addEventListener("input", () => this.updatePreview());
       this.fields.set(key, input);
-      if (key === "label") row.append(input);
-      else {
-        const controls = element("div", "sya-color-field");
-        const picker = element("input", "sya-color-picker");
-        picker.type = "color";
-        picker.setAttribute("aria-label", t("选择{0}", label));
-        const syncPicker = () => {
-          const probe = document.createElement("span");
-          probe.style.color = input.value || "#477baf";
-          probe.style.visibility = "hidden";
-          document.body.append(probe);
-          const channels = getComputedStyle(probe).color.match(/[\d.]+/g);
-          probe.remove();
-          if (channels && channels.length >= 3)
-            picker.value = `#${channels
-              .slice(0, 3)
-              .map((channel) =>
-                Math.round(Number(channel)).toString(16).padStart(2, "0"),
-              )
-              .join("")}`;
-        };
-        syncPicker();
-        input.addEventListener("input", syncPicker);
-        picker.addEventListener("input", () => {
-          input.value = picker.value;
-          this.updatePreview();
-        });
-        controls.append(input, picker);
-        row.append(controls);
-      }
+      row.append(input);
       this.form.append(row);
       return input;
     };
+    const addColor = (key: string, label: string, value: string) => {
+      const color = new ColorField(key, value, () => this.updatePreview(), label);
+      this.colors.set(key, color); this.form.append(color.element);
+    };
     addField("label", t("工具名称"), toolLabel(tool)).maxLength = 60;
+    this.nativePicker = new StylePicker(id => {
+      const native = nativeStyles.tools.find(item => item.id === id);
+      if (!native) return;
+      const draft = this.readDraft();
+      const styles = { ...draft.styles, ...native.styles };
+      const reset = nativeDefaultGroup(native.nativeRef);
+      if (reset && reset !== "backgroundColor") delete styles.color;
+      if (reset && reset !== "color") delete styles["background-color"];
+      this.edit({ ...draft, styles });
+    }, { label: t("选择思源样式") });
+    this.nativePicker.update(nativeStyles.tools, "");
+    this.form.append(this.nativePicker.element);
     const inheritRow = element("label", "sya-checkbox");
     this.inherit = element("input", "sya-inherit-current");
     this.inherit.type = "checkbox";
     inheritRow.append(
       this.inherit,
-      element("span", "", t("继承思源当前使用的一个样式（独立副本）")),
+      element("span", "", t("继承思源最近使用的样式（保留原生引用）")),
     );
     this.form.append(inheritRow);
     this.inherit.addEventListener("change", async () => {
@@ -196,8 +191,8 @@ export class ToolManager {
           error instanceof Error ? error.message : t("读取失败");
       }
     });
-    addField("color", t("文字颜色"), tool.styles.color ?? "");
-    addField(
+    addColor("color", t("文字颜色"), tool.styles.color ?? "");
+    addColor(
       "background-color",
       t("背景颜色"),
       tool.styles["background-color"] ?? "",
@@ -252,7 +247,7 @@ export class ToolManager {
     });
     lineRow.append(line);
     this.form.append(lineRow);
-    addField(
+    addColor(
       "text-decoration-color",
       t("划线颜色"),
       tool.styles["text-decoration-color"] ?? "",
@@ -300,7 +295,7 @@ export class ToolManager {
       "text-decoration-style",
       "text-decoration-color",
     ]) {
-      const value = this.fields.get(key)?.value.trim();
+      const value = this.colors.has(key) ? this.colors.get(key)!.value : this.fields.get(key)?.value.trim();
       if (value) styles[key] = value;
       else delete styles[key];
     }
@@ -320,7 +315,7 @@ export class ToolManager {
     }
     const canonical = document.createElement("span");
     for (const [key, value] of Object.entries(styles))
-      canonical.style.setProperty(key, value);
+      canonical.style.setProperty(key, browserColor(value));
     const marks = [...this.marks]
       .filter(([, input]) => input.checked)
       .map(([mark]) => mark);
@@ -345,6 +340,9 @@ export class ToolManager {
   }
   private async save(): Promise<void> {
     const tool = this.readDraft();
+    if ([...this.colors.values()].some(field => !field.valid())) {
+      this.error.textContent = t("请选择可用的思源颜色"); return;
+    }
     if (!tool.label) {
       this.error.textContent = t("请输入工具名称");
       return;
@@ -429,8 +427,16 @@ export class ToolManager {
       this.error.textContent = t("删除失败，请重试");
     }
   }
+  themeChanged(): void {
+    nativeStyles.applyScope(this.element); this.nativePicker?.update(nativeStyles.tools, "");
+    for (const color of this.colors.values()) color.themeChanged();
+    this.updatePreview();
+  }
   close(): void {
     this.closed = true;
+    this.unsubscribe();
+    this.nativePicker?.destroy();
+    for (const color of this.colors.values()) color.destroy();
     this.generation++;
     this.element.remove();
   }

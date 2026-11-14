@@ -90,9 +90,7 @@ test("sidebar renders safe note text, nested headings, filtering, collapse and n
     panel.element.querySelector(".sya-card__text")!.textContent,
     "记住方法",
   );
-  const filter = panel.element.querySelector("select")!;
-  filter.value = "yellow";
-  filter.dispatchEvent(new window.Event("change"));
+  panel.element.querySelector<HTMLButtonElement>('.sya-style-filter [data-tool-id="yellow"]')!.click();
   assert.match(panel.element.textContent!, /没有匹配的标注/);
   panel.setDocument("doc2", "切换后");
   assert.equal(panel.element.querySelectorAll(".sya-card").length, 0);

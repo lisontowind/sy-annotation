@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { startPreview } from "./preview.mjs";
@@ -22,10 +23,10 @@ try {
     getSelection().removeAllRanges(); getSelection().addRange(range);
     if (fire) editable.dispatchEvent(new PointerEvent("pointerup", { button: 0, bubbles: true }));
   }, { start, end, fire });
-  await page.locator('.sya-panel [data-tool-id="blue"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "blue");
   assert.equal(await page.locator(".sya-editor-indicator").count(), 0);
   await select(0, 8);
-  await page.locator('.sya-panel [data-tool-id="yellow"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "yellow");
   assert.equal(await tx(), 0, "style selection never paints an existing range");
   await page.locator(".sya-panel .sya-apply").click();
   assert.equal(await tx(), 1);
@@ -64,7 +65,7 @@ try {
   assert.equal(await page.locator(".sya-tools--floating").count(), 1);
   await page.locator(".sya-panel .sya-continuous").click();
   await select(30, 36); await page.waitForFunction(() => window.annotationPreview.transactions === 3);
-  await page.locator('.sya-panel [data-tool-id="blue"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "blue");
   assert.equal(await tx(), 3);
   await select(40, 46); await page.waitForFunction(() => window.annotationPreview.transactions === 4);
   assert.equal(await page.locator(".sya-editor-indicator").count(), 1);
@@ -91,7 +92,7 @@ try {
   await page.locator(".sya-batch-source-kind").selectOption("signature");
   const sourceValue = await page.locator(".sya-batch-source option").nth(1).getAttribute("value");
   await page.locator(".sya-batch-source").selectOption(sourceValue);
-  await page.locator(".sya-batch-target").selectOption("wave");
+  await selectStyle(page, ".sya-batch-target", "wave");
   await page.waitForFunction(() => document.querySelector(".sya-batch-execute")?.textContent === "修改 3000 处" && !document.querySelector(".sya-batch-execute").disabled);
   const beforeCommitSnapshots = await page.evaluate(() => window.annotationPreview.fullReads);
   await page.locator(".sya-batch-execute").click();

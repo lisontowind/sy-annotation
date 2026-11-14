@@ -29,7 +29,7 @@ self.onmessage = (
         queries = new QueryEngine(tools, m.environment);
         environmentKey = key;
       }
-      self.postMessage({ id: m.id, query: { rootId, version: m.version, keys: queries.select(snapshot.annotations, m.query).map((a) => a.key) } });
+      self.postMessage({ id: m.id, query: { rootId, version: m.version, catalogRevision: m.catalogRevision, keys: queries.select(snapshot.annotations, m.query).map((a) => a.key) } });
       return;
     }
     if (m.kind === "load" || m.kind === "tools") {

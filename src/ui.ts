@@ -8,6 +8,9 @@ import {
   type OutlineNode,
 } from "./model";
 import { VirtualList, type VirtualRow } from "./virtual-list";
+import { browserColor } from "./theme-colors";
+import { nativeStyles, isNativeToolId } from "./native-styles";
+import { StylePicker } from "./style-picker";
 import { appearanceOf as annotationAppearance, paintStrip, visibleColor, GRAY as DEFAULT_MARK_COLOR, MARK_BACKGROUND as NATIVE_MARK_BACKGROUND, readColorEnvironment } from "./appearance";
 import { emptyQuery, QueryEngine, ruleCount, type AnnotationQuery, type QueryRequest, type QueryResult } from "./filters";
 import { FilterDialog, selectOptions } from "./filter-dialog";
@@ -19,6 +22,12 @@ const paths: Record<string, string> = {
   refresh:
     '<path d="M3 12a9 9 0 0 1 15.74-6.26L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.74 6.26L3 16M8 16H3v5"/>',
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+  filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+  styles: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="6" height="7" rx="1.5"/><rect x="4" y="14" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>',
+  swap: '<path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/>',
+  repeat: '<path d="m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
+  arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',
   chevron: '<path d="m9 5 7 7-7 7"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   outline: '<path d="M9 5h11M9 12h8M9 19h11M4 5h.01M4 12h.01M4 19h.01"/>',
@@ -78,7 +87,7 @@ export function renderToolPreview(
 ): void {
   node.removeAttribute("style");
   for (const [key, value] of Object.entries(tool.styles))
-    node.style.setProperty(key, value);
+    node.style.setProperty(key, browserColor(value));
   if (tool.marks.includes("strong") && !tool.styles["font-weight"]) node.style.fontWeight = "bold";
   if (tool.marks.includes("em") && !tool.styles["font-style"]) node.style.fontStyle = "italic";
   const lines = new Set(
@@ -116,8 +125,8 @@ export interface UIActions {
 export class AnnotationToolbar {
   readonly element: HTMLElement;
   private palette = element("div", "sya-palette");
+  private picker: StylePicker;
   private toggle: HTMLButtonElement;
-  private current = element("span", "sya-tools__current");
   private counter = element("span", "sya-session-count");
   private dismissContext?: () => void;
   constructor(
@@ -130,15 +139,11 @@ export class AnnotationToolbar {
     );
     this.element.setAttribute("role", "toolbar");
     this.element.setAttribute("aria-label", t("标注工具栏"));
-    this.enablePaletteScrolling();
+    this.picker = new StylePicker(id => this.actions.chooseStyle(id), { context: (tool, event) => this.showContext(tool, event) });
+    this.palette.append(this.picker.element);
     this.element.addEventListener("mousedown", (event) =>
       event.preventDefault(),
     );
-    const caption = element("div", "sya-tools__caption");
-    caption.innerHTML = t("{0}<span>标注工具</span>", icon("pen"));
-    caption.append(this.current);
-    if (!floating) this.element.append(caption);
-    this.element.append(this.palette);
     const manager = element("div", "sya-tool-manager-buttons");
     manager.append(
       button("sya-icon-button sya-new-tool", t("新建标注工具"), icon("plus"), () =>
@@ -151,7 +156,7 @@ export class AnnotationToolbar {
         () => actions.manageTool(),
       ),
     );
-    this.element.append(manager);
+    this.element.append(this.palette, manager);
     const controls = element("div", "sya-tools__controls");
     controls.append(
       button(
@@ -172,75 +177,16 @@ export class AnnotationToolbar {
     if (floating)
       this.element.append(
         button(
-          "sya-icon-button",
+          "sya-icon-button sya-close-toolbar",
           t("关闭工具栏并退出连续标注"),
           icon("close"),
           actions.closeToolbar,
         ),
       );
-    else
-      this.element.append(
-        element("p", "sya-tools__hint", t("先选样式，再点击标注 · 右键编辑工具")),
-      );
-  }
-  private enablePaletteScrolling(): void {
-    const palette = this.palette;
-    palette.title = t("滚轮或左右拖动查看更多样式");
-    palette.addEventListener(
-      "wheel",
-      (event) => {
-        if (event.ctrlKey || event.metaKey || palette.scrollWidth <= palette.clientWidth)
-          return;
-        const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-          ? event.deltaX
-          : event.deltaY;
-        if (!delta) return;
-        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? palette.clientWidth : 1;
-        palette.scrollLeft += delta * unit;
-        event.preventDefault();
-      },
-      { passive: false },
-    );
-    let drag: { id: number; x: number; left: number; moved: boolean } | undefined;
-    let suppressClick = false;
-    palette.addEventListener("pointerdown", (event) => {
-      suppressClick = false;
-      if (event.button !== 0 || event.pointerType === "touch" || palette.scrollWidth <= palette.clientWidth)
-        return;
-      drag = { id: event.pointerId, x: event.clientX, left: palette.scrollLeft, moved: false };
-    });
-    palette.addEventListener("pointermove", (event) => {
-      if (!drag || drag.id !== event.pointerId) return;
-      const distance = event.clientX - drag.x;
-      if (!drag.moved && Math.abs(distance) < 6) return;
-      if (!drag.moved) {
-        drag.moved = true;
-        suppressClick = true;
-        palette.setPointerCapture(event.pointerId);
-        palette.classList.add("is-dragging");
-      }
-      palette.scrollLeft = drag.left - distance;
-      event.preventDefault();
-    });
-    const finish = (event: PointerEvent) => {
-      if (drag?.id !== event.pointerId) return;
-      if (palette.hasPointerCapture(event.pointerId))
-        palette.releasePointerCapture(event.pointerId);
-      palette.classList.remove("is-dragging");
-      drag = undefined;
-    };
-    palette.addEventListener("pointerup", finish);
-    palette.addEventListener("pointercancel", finish);
-    palette.addEventListener("lostpointercapture", finish);
-    palette.addEventListener("pointerleave", (event) => {
-      if (!drag?.moved) finish(event);
-    });
-    palette.addEventListener("click", (event) => {
-      if (!suppressClick || !event.detail) return;
-      event.preventDefault();
-      event.stopPropagation();
-      suppressClick = false;
-    }, true);
+    else {
+      const hint = element("p", "sya-tools__hint"); hint.hidden = true;
+      this.element.append(hint);
+    }
   }
   update(
     styleId: string,
@@ -249,44 +195,26 @@ export class AnnotationToolbar {
     tools: AnnotationTool[] = STYLES,
     singleShot = false,
   ): void {
-    this.palette.replaceChildren();
-    for (const tool of tools) {
-      const swatch = button("sya-swatch", toolLabel(tool), "", () =>
-        this.actions.chooseStyle(tool.id),
-      );
-      swatch.dataset.toolId = tool.id;
-      swatch.style.setProperty("--sya-swatch", toolAccentColor(tool));
-      const sample = element("span", "sya-swatch__sample", "Aa");
-      renderToolPreview(sample, tool);
-      swatch.append(sample);
-      swatch.classList.toggle("is-selected", tool.id === styleId);
-      swatch.classList.toggle("is-painting", tool.id === styleId && (continuous || singleShot));
-      swatch.setAttribute(
-        "aria-pressed",
-        String(tool.id === styleId),
-      );
-      swatch.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-        this.showContext(tool, event);
-      });
-      this.palette.append(swatch);
-    }
-    this.current.textContent =
-      toolLabel(tools.find((tool) => tool.id === styleId)) || t("尚无工具");
+    nativeStyles.applyScope(this.element);
+    this.picker.update(tools, styleId);
     this.toggle.classList.toggle("is-active", continuous);
     this.toggle.setAttribute("aria-pressed", String(continuous));
-    this.toggle.innerHTML = t("{0}<span>{1}</span>", icon(continuous ? "stop" : "pen"), continuous ? t("结束标注") : t("连续标注"));
+    this.toggle.innerHTML = t("{0}<span>{1}</span>", icon(continuous ? "stop" : "repeat"), continuous ? t("结束标注") : t("连续标注"));
     this.counter.textContent = continuous && count ? t("本次 {0} 处", count) : "";
     const apply = this.element.querySelector<HTMLButtonElement>(".sya-apply")!;
+    const unavailable = !tools.some(tool => tool.id === styleId);
+    apply.disabled = unavailable; this.toggle.disabled = unavailable;
     apply.classList.toggle("is-active", singleShot);
     apply.setAttribute("aria-pressed", String(singleShot));
-    const hint = this.element.querySelector(".sya-tools__hint");
-    if (hint)
+    const hint = this.element.querySelector<HTMLElement>(".sya-tools__hint");
+    if (hint) {
+      hint.hidden = !singleShot && !continuous;
       hint.textContent = singleShot
         ? t("请划选一处文字 · 完成后退出 · 按 Esc 取消")
         : continuous
         ? t("选中文字即标注 · 按 Esc 退出")
         : t("先选样式，再点击标注 · 右键编辑工具");
+    }
   }
   private showContext(tool: AnnotationTool, event: MouseEvent): void {
     this.dismissContext?.();
@@ -322,6 +250,7 @@ export class AnnotationToolbar {
   }
   destroy(): void {
     this.dismissContext?.();
+    this.picker.destroy();
     this.element.remove();
   }
 }
@@ -333,7 +262,7 @@ export class AnnotationPanel {
   private tree: HTMLElement;
   private status: HTMLElement;
   private search: HTMLInputElement;
-  private filter: HTMLSelectElement;
+  private filter: StylePicker;
   private collapseButton: HTMLButtonElement;
   private locateButton: HTMLButtonElement;
   private annotations: Annotation[] = [];
@@ -380,7 +309,6 @@ export class AnnotationPanel {
     );
     this.element.append(header);
     const documentInfo = element("div", "sya-document");
-    documentInfo.append(element("div", "sya-eyebrow", t("当前文档")));
     this.title = element("h2", "sya-document__title", t("打开文档开始阅读"));
     this.count = element("span", "sya-document__count", "0");
     const titleLine = element("div", "sya-document__line");
@@ -402,16 +330,16 @@ export class AnnotationPanel {
       this.requestFilter(true);
     });
     searchWrap.append(this.search);
-    this.filter = element("select", "sya-style-filter");
-    this.filter.setAttribute("aria-label", t("筛选标注样式"));
-    this.filter.addEventListener("change", () => {
-      this.filteredCollapsed.clear();
-      this.query.quick = this.filter.value;
-      this.requestFilter(true);
-    });
+    this.filter = new StylePicker(id => {
+      this.query.quick = id; this.filteredCollapsed.clear();
+      this.filter.update(this.tools, id); this.requestFilter(true);
+    }, { label: t("按样式查找"), prefix: [["all", t("全部样式")], ["other", t("其他样式")]] });
+    this.filter.element.classList.add("sya-style-filter");
     const filterActions = element("div", "sya-filter-actions");
-    this.moreFilter = button("sya-button sya-more-filters", t("更多筛选"), t("更多筛选"), () => this.openFilters());
-    filterActions.append(this.filter, this.moreFilter, button("sya-button sya-open-bulk", t("批量改样式"), t("批量改样式"), () => this.actions.openBulk?.(structuredClone(this.query))));
+    this.moreFilter = button("sya-button sya-more-filters", t("更多筛选"), "", () => this.openFilters());
+    const bulk = button("sya-button sya-open-bulk", t("批量改样式"), icon("swap"), () => this.actions.openBulk?.(structuredClone(this.query)));
+    bulk.append(element("span", "", t("批量改样式")));
+    filterActions.append(this.filter.element, this.moreFilter, bulk);
     filters.append(searchWrap, filterActions);
     this.element.append(filters);
     const treeLabel = element("div", "sya-tree-label");
@@ -456,23 +384,11 @@ export class AnnotationPanel {
   }
   setTools(tools: AnnotationTool[]): void {
     this.tools = tools;
-    const selected = this.filter.value || "all";
-    this.filter.replaceChildren();
-    for (const [id, label] of [
-      ["all", t("全部样式")],
-      ...tools.map((tool) => [tool.id, toolLabel(tool)]),
-      ["other", t("其他样式")],
-    ]) {
-      const option = element("option", "", label);
-      option.value = id;
-      this.filter.append(option);
-    }
-    this.filter.value = [...this.filter.options].some(
-      (option) => option.value === selected,
-    )
-      ? selected
-      : "all";
-    this.query.quick = this.filter.value;
+    nativeStyles.applyScope(this.element);
+    if (this.query.quick !== "all" && this.query.quick !== "other" && !isNativeToolId(this.query.quick) && !tools.some(tool => tool.id === this.query.quick)) this.query.quick = "all";
+    this.filter.update(tools, this.query.quick);
+    this.filterDialog?.setTools(tools);
+    this.dismissCardMenu?.();
     if (this.virtual) this.requestFilter();
   }
   setFollow(value: boolean): void {
@@ -495,9 +411,9 @@ export class AnnotationPanel {
       this.headings = [];
       this.queryVersion++;
       this.query = structuredClone(this.sessionFilters.get(id) ?? emptyQuery());
-      if (this.query.quick !== "all" && this.query.quick !== "other" && !this.tools.some((t) => t.id === this.query.quick)) this.query.quick = "all";
+      if (this.query.quick !== "all" && this.query.quick !== "other" && !isNativeToolId(this.query.quick) && !this.tools.some((t) => t.id === this.query.quick)) this.query.quick = "all";
       this.search.value = this.query.search;
-      this.filter.value = this.query.quick;
+      this.filter.update(this.tools, this.query.quick);
       this.collapsed.clear();
       this.filteredCollapsed.clear();
       this.error = "";
@@ -730,6 +646,7 @@ export class AnnotationPanel {
     this.queryVersion++;
     this.filterDialog?.close();
     this.dismissCardMenu?.();
+    this.filter.destroy();
     this.virtual.destroy();
     this.toolbar.destroy();
     this.element.remove();
@@ -742,12 +659,13 @@ export class AnnotationPanel {
   private isFiltered(): boolean { return !!this.query.search.trim() || this.query.quick !== "all" || ruleCount(this.query.rule) > 0; }
   private updateFilterButton(): void {
     const count = ruleCount(this.query.rule);
-    this.moreFilter.textContent = count ? t("更多筛选 · {0}", count) : t("更多筛选");
+    this.moreFilter.innerHTML = icon("filter");
+    this.moreFilter.append(element("span", "", count ? t("更多筛选 · {0}", count) : t("更多筛选")));
     this.moreFilter.classList.toggle("is-active", count > 0);
     this.moreFilter.setAttribute("aria-pressed", String(count > 0));
   }
   private runQuery = (request: QueryRequest): Promise<QueryResult> => {
-    return this.actions.queryAnnotations?.(request) ?? Promise.resolve({ rootId: request.rootId, version: request.version, keys: new QueryEngine(this.tools, request.environment).select(this.annotations, request.query).map((a) => a.key) });
+    return this.actions.queryAnnotations?.(request) ?? Promise.resolve({ rootId: request.rootId, version: request.version, catalogRevision: request.catalogRevision, keys: new QueryEngine(this.tools, request.environment).select(this.annotations, request.query).map((a) => a.key) });
   };
   private requestFilter(reset = false): void {
     const version = ++this.queryVersion;
@@ -768,8 +686,8 @@ export class AnnotationPanel {
     }
     const rootId = this.documentId;
     this.tree.setAttribute("aria-busy", "true");
-    void this.runQuery({ rootId, version, environment: readColorEnvironment(), query: structuredClone(this.query) }).then((result) => {
-      if (this.destroyed || version !== this.queryVersion || rootId !== this.documentId || result.rootId !== rootId || result.version !== version) return;
+    void this.runQuery({ rootId, version, catalogRevision: nativeStyles.revision, environment: readColorEnvironment(), query: structuredClone(this.query) }).then((result) => {
+      if (this.destroyed || version !== this.queryVersion || rootId !== this.documentId || result.rootId !== rootId || result.version !== version || (result.catalogRevision !== undefined && result.catalogRevision !== nativeStyles.revision)) return;
       const keys = new Set(result.keys);
       this.filtered = this.annotations.filter((a) => keys.has(a.key));
       this.renderTree(reset);
@@ -782,6 +700,13 @@ export class AnnotationPanel {
       this.query.rule = structuredClone(rule); this.filteredCollapsed.clear(); this.requestFilter(true);
     });
   }
+  themeChanged(): void {
+    this.dismissCardMenu?.();
+    nativeStyles.applyScope(this.element);
+    this.filter.update(this.tools, this.query.quick);
+    this.filterDialog?.themeChanged(readColorEnvironment());
+    this.requestFilter();
+  }
   private openCardMenu(annotation: Annotation, event: MouseEvent): void {
     this.dismissCardMenu?.();
     const menu = element("div", "sya-tool-context sya-card-context");
@@ -793,8 +718,13 @@ export class AnnotationPanel {
     menu.append(element("strong", "sya-context-heading", t("更改样式")), selectOptions([["replace", t("完全采用目标样式")], ["preserve", t("保留额外格式")]], mode, (value) => {
       mode = value as ReplacementMode; this.actions.setReplacementMode?.(mode);
     }, "sya-text-input sya-replace-mode"));
+    nativeStyles.applyScope(menu);
+    const nativePicker = new StylePicker(id => {
+      this.dismissCardMenu?.(); void this.actions.replaceAnnotation?.(annotation, id, mode);
+    }, { label: t("选择思源样式") });
+    nativePicker.update(this.tools.filter(tool => !!tool.nativeRef), ""); menu.append(nativePicker.element);
     const list = element("div", "sya-context-tools");
-    for (const tool of this.tools) {
+    for (const tool of this.tools.filter(tool => !tool.nativeRef)) {
       const item = button("sya-context-item sya-replace-tool", t("改为 {0}", toolLabel(tool)), "", () => {
         this.dismissCardMenu?.();
         void this.actions.replaceAnnotation?.(annotation, tool.id, mode);
@@ -809,7 +739,7 @@ export class AnnotationPanel {
     }));
     const outside = (e: Event) => { if (!menu.contains(e.target as Node)) this.dismissCardMenu?.(); };
     const escape = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); this.dismissCardMenu?.(); } };
-    this.dismissCardMenu = () => { menu.remove(); document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape, true); this.dismissCardMenu = undefined; };
+    this.dismissCardMenu = () => { nativePicker.destroy(); menu.remove(); document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape, true); this.dismissCardMenu = undefined; };
     document.body.append(menu); document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape, true);
   }
 }

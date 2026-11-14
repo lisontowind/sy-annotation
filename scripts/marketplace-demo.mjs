@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 
@@ -23,7 +24,7 @@ export async function captureDemo(browser, url, directory, locale = "zh-CN", ver
     const overview = await shot("light");
     const sidebar = await page.locator("#dock").screenshot({ path: `${directory}/sidebar.png` });
     await page.locator("#theme-toggle").click(); const dark = await shot("dark"); await page.locator("#theme-toggle").click();
-    await page.locator('.sya-panel .sya-swatch[data-tool-id="green"]').click();
+    await selectStyle(page, ".sya-panel .sya-palette", "green");
     await page.locator(".sya-panel .sya-continuous").click();
     await page.locator(".sya-editor-indicator").waitFor();
     const drag = await page.evaluate(() => {
@@ -49,22 +50,23 @@ export async function captureDemo(browser, url, directory, locale = "zh-CN", ver
     for (const tool of ["yellow", "green"]) {
       await nested.locator(":scope > .sya-rule-actions .sya-add-condition").click();
       nested = root.locator(":scope > .sya-rule-group");
+      await nested.locator(":scope > .sya-rule-condition").last().locator(".sya-rule-field").selectOption("tool");
       await nested.locator(":scope > .sya-rule-condition").last().locator(".sya-rule-value").selectOption(tool);
     }
     await page.waitForFunction(text => document.querySelector(".sya-filter-dialog .sya-dialog-status")?.textContent === text, en ? "4 annotations matched" : "命中 4 处标注");
     await englishUI(".sya-filter-dialog");
     const filter = await page.locator(".sya-filter-dialog").screenshot({ path: `${directory}/dialog-filter.png` });
     await page.getByRole("button", { name: en ? "Cancel filters" : "取消筛选", exact: true }).click();
-    await page.locator(".sya-open-bulk").click(); await page.locator(".sya-batch-target").selectOption("blue");
+    await page.locator(".sya-open-bulk").click(); await selectStyle(page, ".sya-batch-target", "blue");
     await page.waitForFunction(() => !document.querySelector(".sya-batch-execute").disabled);
-    assert.equal(await page.locator(".sya-batch-execute").textContent(), en ? "Change 2" : "修改 2 处");
+    assert.equal(await page.locator(".sya-batch-execute").textContent(), en ? "Change 1" : "修改 1 处");
     await englishUI(".sya-replacement-dialog");
     const batch = await page.locator(".sya-replacement-dialog").screenshot({ path: `${directory}/dialog-batch.png` });
     if (verify) {
       await page.locator(".sya-batch-execute").click();
       await page.locator(".sya-replacement-dialog").waitFor({ state: "detached" });
       await ready(7);
-      assert.match(await page.locator("#messages").textContent(), /Changed 2 annotations/);
+      assert.match(await page.locator("#messages").textContent(), /Changed 1 annotations/);
       await page.evaluate(() => window.annotationPreview.undo()); await ready(7);
     } else await page.getByRole("button", { name: en ? "Cancel batch restyle" : "取消批量修改", exact: true }).click();
     await page.locator(".sya-panel .sya-manage-tools").click();
@@ -82,7 +84,7 @@ export async function captureDemo(browser, url, directory, locale = "zh-CN", ver
       await page.getByRole("button", { name: "Close tool settings", exact: true }).click();
       // Check the actual source-language switch does not translate saved user labels.
       await page.goto(`${url}/?lang=zh-CN`); await ready(6);
-      assert.equal(await page.locator('.sya-swatch[data-tool-id="yellow"]').getAttribute("aria-label"), "My custom style");
+      assert.equal(await page.locator('.sya-palette .sya-swatch[data-tool-id="yellow"]').getAttribute("aria-label"), "My custom style");
     }
     assert.deepEqual(errors, []);
     return { overview, sidebar, dark, annotate, search, filter, batch, tools };

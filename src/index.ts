@@ -4,6 +4,7 @@ import {
   getAllEditor,
   getActiveTab,
   openTab,
+  openSetting,
   showMessage,
   type IProtyle,
 } from "siyuan";
@@ -24,6 +25,7 @@ import {
   type BlockChange,
   type DocumentIndex,
   type ToolConfig,
+  styleSignature,
 } from "./model";
 import {
   AnnotationPanel,
@@ -32,18 +34,22 @@ import {
   type UIActions,
 } from "./ui";
 import { ToolManager } from "./tool-manager";
+import { NativeColorManager } from "./native-color-manager";
 import { IndexClient } from "./index-client";
 import { transactionChanges } from "./changes";
 import { QueryEngine, type AnnotationQuery, type QueryRequest } from "./filters";
-import { appearanceOf, readColorEnvironment, visualSignature, type ColorEnvironment } from "./appearance";
-import { replaceBlock, replacedAppearance, snapshotBlocks, type ReplacementPlan, type ReplacementMode, type ProgressReporter } from "./replacement";
+import { appearanceOf, readColorEnvironment, visualSignature, replacementSignature, type ColorEnvironment } from "./appearance";
+import { replaceBlock, replacedAppearance, snapshotBlocks, type BlockEditPlan, type ReplacementPlan, type ReplacementMode, type ProgressReporter } from "./replacement";
+import { repairAppearance, repairBlock, repairCandidates, repairTools, type ColorMapping } from "./color-repair";
+import { ColorRepairDialog, type ColorRepairPlan, type RepairScope } from "./color-repair-dialog";
 import { ReplacementDialog } from "./replacement-dialog";
 import { nearestAnnotation, readingPosition } from "./location";
+import { nativeStyles, isNativeToolId, nativeUnavailableMessage } from "./native-styles";
 
 function parseAnnotationsForVerification(html: string, tools: AnnotationTool[], environment: ColorEnvironment = readColorEnvironment()): unknown[] {
   const result: { id: string; start: number; end: number; text: string; style: string }[] = [];
   for (const a of parseAnnotations(html, tools).annotations) {
-    const style = visualSignature(appearanceOf(a), environment);
+    const style = replacementSignature(appearanceOf(a), environment);
     const last = result[result.length - 1];
     if (last?.id === a.blockId && last.end === a.start && last.style === style) { last.end = a.end; last.text += a.text; }
     else result.push({ id: a.blockId, start: a.start, end: a.end, text: a.text, style });
@@ -95,7 +101,17 @@ export default class AnnotationPlugin extends Plugin {
   private contentVersion = 0;
   private contentKey = "";
   private documentEpoch = 0;
-  private replacementContexts = new WeakMap<ReplacementPlan, { epoch: number; version: number; protyle: IProtyle; environment: ColorEnvironment; snapshot: boolean }>();
+  private replacementContexts = new WeakMap<BlockEditPlan, { epoch: number; version: number; protyle: IProtyle; environment: ColorEnvironment; snapshot: boolean; tools: string; repair?: boolean }>();
+  private repairDialog?: ColorRepairDialog;
+  private toolRepairContexts = new WeakMap<ColorRepairPlan, { tools: string; environment: string }>();
+  private themeObserver?: MutationObserver;
+  private themeHeadObserver?: MutationObserver;
+  private themeFrame?: number;
+  private colorEnvironmentKey = "";
+  private unsubscribeStyles?: () => void;
+  private nativeColorManager?: NativeColorManager;
+  private get availableTools(): AnnotationTool[] { return [...nativeStyles.tools, ...this.config.tools]; }
+
 
   private actions: UIActions = {
     chooseStyle: (id) => this.chooseTool(id),
@@ -144,6 +160,16 @@ export default class AnnotationPlugin extends Plugin {
       this.loadData("preferences.json").catch(() => null),
     ]);
     this.config = loadToolConfig(data, legacy);
+    if (!data && !legacy?.styleId) this.config.selectedId = "native:backgroundColor:12";
+    this.unsubscribeStyles = nativeStyles.subscribe(this.onNativeStyles);
+    this.nativeColorManager = new NativeColorManager(() => typeof openSetting === "function" ? openSetting(this.app) : undefined,
+      () => { if (!this.disposed) void nativeStyles.refresh(); });
+    nativeStyles.manageColors = group => {
+      void this.nativeColorManager?.open(group).catch(error => {
+        if (!this.disposed && error?.name !== "AbortError") showMessage(error instanceof Error ? error.message : String(error));
+      });
+    };
+
     if (!data)
       this.persist().catch((error) => {
         console.warn("[sy-annotation] 配置迁移保存失败", error);
@@ -164,13 +190,13 @@ export default class AnnotationPlugin extends Plugin {
         const panel = new AnnotationPanel(this.actions);
         dock.element.append(panel.element);
         this.panels.add(panel);
-        panel.setTools(this.config.tools);
+        panel.setTools(this.availableTools);
         panel.setFollow(this.follow);
         panel.toolbar.update(
           this.config.selectedId,
           this.continuous,
           this.sessionCount,
-          this.config.tools,
+          this.availableTools,
           this.singleShot,
         );
         this.setPanelDocument(panel);
@@ -225,6 +251,13 @@ export default class AnnotationPlugin extends Plugin {
       capture: true,
       passive: true,
     });
+    this.colorEnvironmentKey = JSON.stringify(readColorEnvironment());
+    this.themeObserver = new MutationObserver(this.onThemeSignal);
+    this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme-mode", "data-theme", "data-light-theme", "data-dark-theme", "style", "class"] });
+    this.themeHeadObserver = new MutationObserver(this.onThemeSignal);
+    this.themeHeadObserver.observe(document.head, { childList: true, subtree: true, attributes: true, characterData: true });
+    document.addEventListener("load", this.onThemeLoad, true);
+    nativeStyles.start();
   }
 
   onLayoutReady(): void {
@@ -243,6 +276,12 @@ export default class AnnotationPlugin extends Plugin {
 
   onunload(): void {
     this.disposed = true;
+    this.nativeColorManager?.destroy(); nativeStyles.manageColors = undefined;
+    this.unsubscribeStyles?.(); nativeStyles.stop();
+    this.themeObserver?.disconnect(); this.themeHeadObserver?.disconnect();
+    document.removeEventListener("load", this.onThemeLoad, true);
+    if (this.themeFrame !== undefined) cancelAnimationFrame(this.themeFrame);
+    this.repairDialog?.close(true);
     this.generation++;
     this.requestController?.abort();
     this.indexer?.destroy();
@@ -289,8 +328,9 @@ export default class AnnotationPlugin extends Plugin {
     return save;
   }
   private async commitTools(tools: AnnotationTool[]): Promise<void> {
+    this.repairDialog?.stateChanged();
     const previous = this.config;
-    const deletedActive = !tools.some(
+    const deletedActive = !isNativeToolId(this.config.selectedId) && !tools.some(
       (tool) => tool.id === this.config.selectedId,
     );
     this.config = {
@@ -305,14 +345,14 @@ export default class AnnotationPlugin extends Plugin {
       throw error;
     }
     if (deletedActive) this.setContinuous(false);
-    for (const panel of this.panels) panel.setTools(this.config.tools);
+    for (const panel of this.panels) panel.setTools(this.availableTools);
     this.updateTools();
     const generation = this.generation;
     if (this.indexer && !this.loading) {
       try {
         const index = await this.indexer.send({
           kind: "tools",
-          tools: this.config.tools,
+          tools: this.availableTools,
         });
         if (generation === this.generation && index) this.publish(index);
       } catch (error) {
@@ -327,10 +367,41 @@ export default class AnnotationPlugin extends Plugin {
       (tools) => this.commitTools(tools),
       id,
       create,
+      () => void this.openColorRepair(),
     );
   }
+  private onNativeStyles = (): void => {
+    if (this.disposed) return;
+    if (isNativeToolId(this.config.selectedId) && !this.availableTools.some(tool => tool.id === this.config.selectedId)) this.setContinuous(false);
+    // Enqueue new tool descriptors before any queries from the refreshed UI.
+    const generation = this.generation;
+    if (this.indexer && !this.loading) void this.indexer.send({ kind: "tools", tools: this.availableTools }).then(index => {
+      if (!this.disposed && generation === this.generation && index) this.publish(index);
+    }).catch(error => this.reportError(error, generation));
+    for (const panel of this.panels) panel.setTools(this.availableTools);
+    this.updateTools();
+    this.replacementDialog?.setTools(this.availableTools, readColorEnvironment());
+    this.repairDialog?.stateChanged();
+    this.onThemeSignal();
+  };
+  private onThemeLoad = (event: Event): void => {
+    if (event.target instanceof HTMLLinkElement && event.target.rel === "stylesheet") this.onThemeSignal();
+  };
+  private onThemeSignal = (): void => {
+    if (this.disposed || this.themeFrame !== undefined) return;
+    this.themeFrame = requestAnimationFrame(() => {
+      this.themeFrame = undefined;
+      const environment = readColorEnvironment(), key = JSON.stringify(environment);
+      if (key === this.colorEnvironmentKey) return;
+      this.colorEnvironmentKey = key;
+      this.updateTools();
+      for (const panel of this.panels) panel.themeChanged();
+      this.manager?.themeChanged();
+      this.replacementDialog?.themeChanged(environment); this.repairDialog?.stateChanged();
+    });
+  };
   private chooseTool(id: string): void {
-    if (!this.config.tools.some((tool) => tool.id === id)) {
+    if (!this.availableTools.some((tool) => tool.id === id)) {
       this.openManager(undefined, true);
       return;
     }
@@ -341,7 +412,8 @@ export default class AnnotationPlugin extends Plugin {
     this.updateTools();
   }
   private annotateOnce(): void {
-    if (!this.config.tools.some((tool) => tool.id === this.config.selectedId)) {
+    if (!this.availableTools.some((tool) => tool.id === this.config.selectedId)) {
+      if (isNativeToolId(this.config.selectedId)) { showMessage(nativeUnavailableMessage()); return; }
       this.openManager(undefined, true);
       return;
     }
@@ -365,6 +437,7 @@ export default class AnnotationPlugin extends Plugin {
       this.documentEpoch++;
       this.contentKey = "";
       this.replacementDialog?.close(true);
+      this.repairDialog?.stateChanged();
       this.rootId = id;
       this.generation++;
       this.requestController?.abort();
@@ -430,6 +503,10 @@ export default class AnnotationPlugin extends Plugin {
   private onTransaction = (
     event: CustomEvent<{ cmd?: string; data?: unknown }>,
   ): void => {
+    if (event.detail.cmd === "reloadInlineStyles") { nativeStyles.scheduleRefresh(); return; }
+    if (["setLocalStorageVal", "setLocalStorageVals", "removeLocalStorageVal", "removeLocalStorageVals"].includes(event.detail.cmd || "")) {
+      queueMicrotask(() => { if (!this.disposed) this.updateTools(); });
+    }
     if (!this.rootId) return;
     if (event.detail.cmd === "transactions") {
       const changes = transactionChanges(
@@ -487,7 +564,7 @@ export default class AnnotationPlugin extends Plugin {
         }
         if ("updatedBlocks" in index && this.index) {
           applyAnnotationDelta(this.index, index);
-          if (index.updatedBlocks.length) this.contentVersion++;
+          if (index.updatedBlocks.length) { this.contentVersion++; this.repairDialog?.stateChanged(); }
           if (index.annotations.length) {
             this.contentKey = "";
             for (const panel of this.panels) panel.setAnnotations(this.index.annotations, this.index.headings);
@@ -571,6 +648,8 @@ export default class AnnotationPlugin extends Plugin {
     }
   };
   private onKeyDown = (event: KeyboardEvent): void => {
+    // An open picker handles Escape first, keeping its parent dialog open.
+    if (event.key === "Escape" && document.querySelector("details.sya-style-picker[open]")) return;
     if (event.key === "Escape" && (this.continuous || this.singleShot)) {
       this.setContinuous(false);
       event.preventDefault();
@@ -581,7 +660,7 @@ export default class AnnotationPlugin extends Plugin {
     if (this.painting || this.replacing) return;
     this.captureSelection();
     const target = this.savedSelection;
-    const style = this.config.tools.find(
+    const style = this.availableTools.find(
       (tool) => tool.id === this.config.selectedId,
     );
     if (!target || !style || !validateSelection(target.protyle, target.range))
@@ -618,7 +697,8 @@ export default class AnnotationPlugin extends Plugin {
     }
   }
   private setContinuous(value: boolean): void {
-    if (value && !this.config.tools.length) {
+    if (value && !this.availableTools.some(tool => tool.id === this.config.selectedId)) {
+      if (isNativeToolId(this.config.selectedId)) { showMessage(nativeUnavailableMessage()); return; }
       this.openManager(undefined, true);
       return;
     }
@@ -638,7 +718,7 @@ export default class AnnotationPlugin extends Plugin {
       this.config.selectedId,
       this.continuous,
       this.sessionCount,
-      this.config.tools,
+      this.availableTools,
       this.singleShot,
     );
   }
@@ -652,14 +732,14 @@ export default class AnnotationPlugin extends Plugin {
         this.config.selectedId,
         this.continuous,
         this.sessionCount,
-        this.config.tools,
+        this.availableTools,
         this.singleShot,
       );
     this.floating?.update(
       this.config.selectedId,
       this.continuous,
       this.sessionCount,
-      this.config.tools,
+      this.availableTools,
       this.singleShot,
     );
     this.topbar?.classList.toggle("toolbar__item--active", this.continuous || this.singleShot);
@@ -675,7 +755,7 @@ export default class AnnotationPlugin extends Plugin {
     for (const editor of this.editors)
       if (editor.element.isConnected && !editor.disabled && editor.wysiwyg) {
         const node = createEditorIndicator(
-          toolLabel(this.config.tools.find((tool) => tool.id === this.config.selectedId)),
+          toolLabel(this.availableTools.find((tool) => tool.id === this.config.selectedId)),
           this.sessionCount,
           () => this.setContinuous(false),
           this.singleShot,
@@ -725,7 +805,7 @@ export default class AnnotationPlugin extends Plugin {
     this.queued = [];
     const controller = new AbortController();
     this.requestController = controller;
-    const toolSnapshot = structuredClone(this.config.tools);
+    const toolSnapshot = structuredClone(this.availableTools);
     for (const panel of this.panels) {
       this.setPanelDocument(panel);
       panel.setLoading();
@@ -746,10 +826,10 @@ export default class AnnotationPlugin extends Plugin {
       });
       if (this.disposed || generation !== this.generation || !index) return;
       // Reclassify if tool settings changed while the initial document request was pending.
-      if (JSON.stringify(toolSnapshot) !== JSON.stringify(this.config.tools))
+      if (JSON.stringify(toolSnapshot) !== JSON.stringify(this.availableTools))
         index = await this.indexer.send({
           kind: "tools",
-          tools: this.config.tools,
+          tools: this.availableTools,
         });
       if (generation === this.generation && index) this.publish(index);
     } catch (error) {
@@ -764,30 +844,99 @@ export default class AnnotationPlugin extends Plugin {
   }
   private publish(index: DocumentIndex): void {
     const key = JSON.stringify([index.order, index.headings, index.annotations.map((a) => [a.blockId, a.start, a.end, a.text, a.signature, a.headings.map((h) => h.id)])]);
-    if (key !== this.contentKey) { this.contentKey = key; this.contentVersion++; }
+    if (key !== this.contentKey) { this.contentKey = key; this.contentVersion++; this.repairDialog?.stateChanged(); }
     this.index = index;
     for (const panel of this.panels) panel.setAnnotations(index.annotations, index.headings);
     this.scheduleLocate();
   }
   private queryAnnotations(request: QueryRequest) {
+    if (request.catalogRevision !== undefined && request.catalogRevision !== nativeStyles.revision) return Promise.reject(new Error(t("样式库已更新，请重新查找")));
     if (request.rootId !== this.rootId) return Promise.reject(new Error(t("文档已切换")));
     if (this.indexer) return this.indexer.query(request);
-    return Promise.resolve({ rootId: request.rootId, version: request.version, keys: new QueryEngine(this.config.tools, request.environment).select(this.index?.annotations ?? [], request.query).map((a) => a.key) });
+    return Promise.resolve({ rootId: request.rootId, version: request.version, catalogRevision: request.catalogRevision, keys: new QueryEngine(this.availableTools, request.environment).select(this.index?.annotations ?? [], request.query).map((a) => a.key) });
   }
   private openBulk(query: AnnotationQuery, annotation?: Annotation): void {
     if (!this.index || !this.active || this.loading || this.replacing) { showMessage(t("请等待当前文档索引完成")); return; }
     this.replacementDialog?.close();
-    this.replacementDialog = new ReplacementDialog(this.index.annotations, this.config.tools, readColorEnvironment(), query, this.replacementMode, annotation,
+    this.replacementDialog = new ReplacementDialog(this.index.annotations, this.availableTools, readColorEnvironment(), query, this.replacementMode, annotation,
       async (spec, signal, progress) => {
         await this.flushForReplacement(signal);
         const env = readColorEnvironment();
-        const engine = new QueryEngine(this.config.tools, env);
+        const engine = new QueryEngine(this.availableTools, env);
         const base = spec.scope === "filtered" ? engine.select(this.index!.annotations, spec.query) : this.index!.annotations;
         const source = { kind: "condition" as const, field: spec.sourceKind === "tool" ? "tool" as const : "signature" as const, value: spec.source, exclude: false };
         return this.prepareReplacement(base.filter((a) => engine.rule(a, source)), spec.targetId, spec.mode, signal, progress);
       },
       (plan, signal, progress) => this.commitReplacement(plan, signal, progress),
       (mode) => { this.replacementMode = mode; });
+  }
+  private async openColorRepair(): Promise<void> {
+    if (this.replacing || this.disposed) return;
+    this.manager?.close(); this.repairDialog?.close();
+    const backup = await this.loadData("tools-theme-backup.json").catch(() => null);
+    if (this.disposed) return;
+    this.repairDialog = new ColorRepairDialog(
+      scope => repairCandidates(scope === "tools" ? this.config.tools :
+        !this.loading ? (this.index?.annotations || []).map(appearanceOf) : []),
+      (scope, mappings, signal) => this.prepareColorRepair(scope, mappings, signal),
+      async (plan, signal, progress) => {
+        if (plan.scope === "document") { await this.commitReplacement(plan, signal, progress); return; }
+        const context = this.toolRepairContexts.get(plan);
+        const valid = () => !this.disposed && context?.tools === JSON.stringify(this.config.tools) &&
+          context.environment === JSON.stringify(readColorEnvironment());
+        signal.throwIfAborted();
+        if (!valid() || !plan.tools) throw new Error(t("内容或工具已变化，请重新预览"));
+        await this.saveData("tools-theme-backup.json", structuredClone(this.config));
+        signal.throwIfAborted();
+        if (!valid()) throw new Error(t("内容或工具已变化，请重新预览"));
+        progress({ phase: "saving", completed: 0, total: plan.changed });
+        await this.commitTools(plan.tools); this.toolRepairContexts.delete(plan);
+        progress({ phase: "done", completed: plan.changed, total: plan.changed });
+      },
+      async () => {
+        const saved = await this.loadData("tools-theme-backup.json");
+        if (!saved || saved.version !== 1 || !Array.isArray(saved.tools)) throw new Error(t("工具备份无效或不存在"));
+        const config = loadToolConfig(saved);
+        if (config.tools.length !== saved.tools.length) throw new Error(t("工具备份无效或不存在"));
+        await this.commitTools(config.tools);
+      }, !!backup,
+    );
+  }
+  private async prepareColorRepair(scope: RepairScope, mappings: ColorMapping[], signal: AbortSignal): Promise<ColorRepairPlan> {
+    signal.throwIfAborted();
+    const environment = readColorEnvironment();
+    if (scope === "tools") {
+      const source = this.config.tools, tools = repairTools(source, mappings);
+      const changed = source.filter((tool, i) => styleSignature(tool.marks, tool.styles) !== styleSignature(tools[i].marks, tools[i].styles));
+      const plan: ColorRepairPlan = { scope, rootId: "", blocks: [], tools, matched: changed.length, changed: changed.length,
+        examples: changed.slice(0, 5).map(tool => ({
+          before: { key: tool.id, blockId: "", text: toolLabel(tool), start: 0, end: toolLabel(tool).length, styleId: tool.id,
+            label: tool.label, color: tool.color, signature: styleSignature(tool.marks, tool.styles), headings: [] },
+          after: repairAppearance(tool, mappings),
+        })) };
+      this.toolRepairContexts.set(plan, { tools: JSON.stringify(source), environment: JSON.stringify(environment) }); return plan;
+    }
+    await this.flushForReplacement(signal);
+    const protyle = this.active!, rootId = this.rootId, epoch = this.documentEpoch, version = this.contentVersion;
+    const tools = JSON.stringify(this.config.tools);
+    const annotations = this.index!.annotations.filter(a => {
+      const before = appearanceOf(a), after = repairAppearance(before, mappings);
+      return styleSignature(before.marks, before.styles) !== styleSignature(after.marks, after.styles);
+    });
+    const ids = [...new Set(annotations.map(a => a.blockId))];
+    const plan: ColorRepairPlan = { scope, rootId, blocks: [], matched: annotations.length, changed: 0,
+      examples: annotations.slice(0, 5).map(before => ({ before, after: repairAppearance(appearanceOf(before), mappings) })) };
+    await this.readReplacementBlocks(ids, protyle, signal, async (_id, html) => {
+      const block = repairBlock(html, mappings, this.config.tools);
+      if (block.count && block.before !== block.after) plan.blocks.push(block);
+    });
+    signal.throwIfAborted();
+    if (this.disposed || rootId !== this.rootId || epoch !== this.documentEpoch || version !== this.contentVersion ||
+      tools !== JSON.stringify(this.config.tools) || JSON.stringify(environment) !== JSON.stringify(readColorEnvironment()))
+      throw new Error(t("内容或工具已变化，请重新预览"));
+    plan.changed = plan.blocks.reduce((n, block) => n + block.count, 0);
+    this.replacementContexts.set(plan, { epoch, version, protyle, environment, snapshot: ids.length >= 32, tools, repair: true });
+    return plan;
   }
   private async flushForReplacement(signal: AbortSignal): Promise<void> {
     signal.throwIfAborted();
@@ -839,7 +988,7 @@ export default class AnnotationPlugin extends Plugin {
     progress({ phase: "preparing", completed: 0, total: annotations.length, message: t("正在读取原文并准备预览") });
     await this.flushForReplacement(signal);
     const protyle = this.active!; const rootId = this.rootId; const epoch = this.documentEpoch; const version = this.contentVersion;
-    const target = this.config.tools.find((t) => t.id === toolId);
+    const target = this.availableTools.find((t) => t.id === toolId);
     if (!target) throw new Error(t("目标工具已不存在"));
     const environment = readColorEnvironment();
     const plan: ReplacementPlan = { rootId, target: structuredClone(target), mode, blocks: [], matched: annotations.length, changed: 0, examples: [] };
@@ -850,24 +999,24 @@ export default class AnnotationPlugin extends Plugin {
     await this.readReplacementBlocks(entries.map(([id]) => id), protyle, signal, async (id, html, i) => {
       if (this.rootId !== rootId || epoch !== this.documentEpoch) throw new Error(t("文档已切换"));
       const annotations = entries[i][1];
-      results[i] = replaceBlock(html, annotations, target, mode, environment, this.config.tools);
+      results[i] = replaceBlock(html, annotations, target, mode, environment, this.availableTools);
       done += annotations.length;
       progress({ phase: "preparing", completed: done, total: plan.matched });
     });
     signal.throwIfAborted();
     if (this.loading || this.patching) await this.flushForReplacement(signal);
-    if (this.disposed || rootId !== this.rootId || epoch !== this.documentEpoch || version !== this.contentVersion || JSON.stringify(target) !== JSON.stringify(this.config.tools.find((t) => t.id === toolId))) throw new Error(t("内容或工具已变化，请重新预览"));
+    if (this.disposed || rootId !== this.rootId || epoch !== this.documentEpoch || version !== this.contentVersion || JSON.stringify(target) !== JSON.stringify(this.availableTools.find((t) => t.id === toolId))) throw new Error(t("内容或工具已变化，请重新预览"));
     plan.blocks = results.filter((b) => b.count > 0); plan.changed = plan.blocks.reduce((sum, b) => sum + b.count, 0);
-    plan.examples = annotations.filter((a) => visualSignature(appearanceOf(a), environment) !== visualSignature(replacedAppearance(appearanceOf(a), target, mode), environment)).slice(0, 5).map((before) => ({ before, after: replacedAppearance(appearanceOf(before), target, mode) }));
-    this.replacementContexts.set(plan, { epoch, version, protyle, environment, snapshot: entries.length >= 32 });
+    plan.examples = annotations.filter((a) => replacementSignature(appearanceOf(a), environment) !== replacementSignature(replacedAppearance(appearanceOf(a), target, mode), environment)).slice(0, 5).map((before) => ({ before, after: replacedAppearance(appearanceOf(before), target, mode) }));
+    this.replacementContexts.set(plan, { epoch, version, protyle, environment, snapshot: entries.length >= 32, tools: JSON.stringify(this.config.tools) });
     return plan;
   }
-  private async commitReplacement(plan: ReplacementPlan, signal: AbortSignal, progress: ProgressReporter): Promise<void> {
+  private async commitReplacement(plan: BlockEditPlan, signal: AbortSignal, progress: ProgressReporter): Promise<void> {
     if (this.replacing) throw new Error(t("正在修改，请稍候"));
     const context = this.replacementContexts.get(plan);
     const valid = () => {
       if (!context) return false;
-      const reasons = { disposed: this.disposed, document: plan.rootId !== this.rootId || context.protyle !== this.active || context.epoch !== this.documentEpoch, content: context.version !== this.contentVersion, tool: JSON.stringify(plan.target) !== JSON.stringify(this.config.tools.find((t) => t.id === plan.target.id)), theme: JSON.stringify(context.environment) !== JSON.stringify(readColorEnvironment()) };
+      const reasons = { disposed: this.disposed, document: plan.rootId !== this.rootId || context.protyle !== this.active || context.epoch !== this.documentEpoch, content: context.version !== this.contentVersion, tool: context.tools !== JSON.stringify(this.config.tools), theme: JSON.stringify(context.environment) !== JSON.stringify(readColorEnvironment()) };
       if (Object.values(reasons).some(Boolean)) { console.debug("[sy-annotation] 替换预览已失效", reasons); return false; }
       return true;
     };
@@ -900,7 +1049,7 @@ export default class AnnotationPlugin extends Plugin {
       let verified = 0;
       const persisted: { id: string; html: string }[] = [];
       const verificationTools = structuredClone(this.config.tools);
-      const verificationEnvironment = context!.environment;
+      const verificationEnvironment = context!.repair ? {} : context!.environment;
       await this.readReplacementBlocks(plan.blocks.map((b) => b.id), context!.protyle, new AbortController().signal, async (id, html, i) => {
         const block = plan.blocks[i];
         const expected = parseAnnotationsForVerification(block.after, verificationTools, verificationEnvironment);

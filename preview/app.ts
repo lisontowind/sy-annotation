@@ -2,9 +2,11 @@ import AnnotationPlugin from "../src/index";
 import { bus, setEditor, type Plugin } from "./mock-siyuan";
 import type { IProtyle } from "siyuan";
 import { setLocale, getLocale } from "../src/i18n";
+import { emptyNativeStyles, type NativeStyleData } from "../src/native-styles";
 
 setLocale(new URLSearchParams(location.search).get("lang") ?? "zh-CN");
 document.documentElement.lang = getLocale();
+document.documentElement.dataset.theme = "light";
 if (getLocale() === "en-US") {
   document.title = "Annotation Outline · Interactive preview";
   document.querySelector(".preview-brand")!.innerHTML = '<span class="preview-brand__icon">Si</span> Annotation Outline <span class="preview-tag">Plugin demo</span>';
@@ -111,7 +113,7 @@ const protyle = {
       _protyle: unknown,
       type: string,
       _action: string,
-      text?: { color: string },
+      text?: { type?: string; color: string },
     ) {
       const range = protyle.toolbar!.range;
       const startBlock =
@@ -122,6 +124,47 @@ const protyle = {
         throw new Error(
           "预览的编辑器模拟仅支持单块；实际插件由思源处理跨块标注。",
         );
+      if (type === "text" && text?.type && ["style1", "color", "backgroundColor"].includes(text.type) && !text.color.replaceAll("\u200b", "")) {
+        const properties = text.type === "color" ? ["color"] : text.type === "backgroundColor" ? ["background-color"] : ["color", "background-color"];
+        const selected: Text[] = [];
+        type Piece = { node: Node; selected: boolean };
+        const visit = (node: Node): Piece[] => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const value = node.textContent || "";
+            if (!range.intersectsNode(node)) return [{ node: node.cloneNode(true), selected: false }];
+            const start = range.startContainer === node ? range.startOffset : 0;
+            const end = range.endContainer === node ? range.endOffset : value.length;
+            const result: Piece[] = [];
+            if (start) result.push({ node: document.createTextNode(value.slice(0, start)), selected: false });
+            if (end > start) { const text = document.createTextNode(value.slice(start, end)); selected.push(text); result.push({ node: text, selected: true }); }
+            if (end < value.length) result.push({ node: document.createTextNode(value.slice(end)), selected: false });
+            return result;
+          }
+          if (!(node instanceof HTMLElement)) return [{ node: node.cloneNode(true), selected: false }];
+          const pieces = [...node.childNodes].flatMap(visit);
+          if (node === startBlock || node.hasAttribute("contenteditable")) {
+            const clone = node.cloneNode(false); pieces.forEach(piece => clone.appendChild(piece.node)); return [{ node: clone, selected: false }];
+          }
+          const result: Piece[] = [];
+          for (const piece of pieces) {
+            let group = result[result.length - 1];
+            if (!group || group.selected !== piece.selected) {
+              const clone = node.cloneNode(false) as HTMLElement;
+              if (piece.selected) for (const property of properties) clone.style.removeProperty(property);
+              if (!clone.style.length) { clone.removeAttribute("style"); clone.dataset.type = (clone.dataset.type || "").split(" ").filter(type => type && type !== "text").join(" "); }
+              group = { node: clone, selected: piece.selected }; result.push(group);
+            }
+            group.node.appendChild(piece.node);
+          }
+          return result.length ? result : [{ node: node.cloneNode(true), selected: false }];
+        };
+        const block = startBlock as HTMLElement;
+        const clone = visit(block)[0].node;
+        protyle.getInstance().updateBatchTransaction([block], current => current.replaceChildren(...clone.childNodes));
+        range.setStart(selected[0], 0); range.setEnd(selected[selected.length - 1], selected[selected.length - 1].length);
+        window.getSelection()?.removeAllRanges(); window.getSelection()?.addRange(range);
+        return selected;
+      }
       const span = document.createElement("span");
       span.dataset.type = type;
       if (text) span.style.backgroundColor = text.color;
@@ -137,8 +180,11 @@ const protyle = {
   },
 } as unknown as IProtyle;
 setEditor(protyle);
+let nativeStyleData: NativeStyleData = JSON.parse(localStorage.getItem("preview-native-styles") || "null") || emptyNativeStyles();
+Object.assign(window, { siyuan: { config: { lang: getLocale(), appearance: { mode: 0 } }, storage: { "local-fontstyles": ["style1\u200bvar(--b3-font-background3)\u200b#214b76", "backgroundColor\u200bvar(--b3-font-background4)"] } } });
 const nativeFetch = window.fetch.bind(window);
 window.fetch = async (input, init) => {
+  if (input === "/api/storage/getInlineStyles") return new Response(JSON.stringify({ code: 0, data: nativeStyleData }), { headers: { "Content-Type": "application/json" } });
   if (input === "/api/block/getBlockDOMs") {
     blockReadBatches++;
     const body = JSON.parse(String(init?.body));
@@ -244,6 +290,23 @@ function historyStep(redo: boolean) {
 Object.assign(window, {
   annotationPreview: {
     plugin,
+    setNativeStyles(data: NativeStyleData, broadcast = true) {
+      nativeStyleData = structuredClone(data); localStorage.setItem("preview-native-styles", JSON.stringify(data));
+      let node = document.getElementById("siyuanStyle");
+      if (!node) { node = document.createElement("style"); node.id = "siyuanStyle"; document.head.append(node); }
+      node.textContent = (["light", "dark"] as const).map(mode => {
+        const declarations: string[] = [];
+        for (const style of data.styles) for (const property of ["color", "backgroundColor"] as const)
+          if (style[mode][property]) declarations.push(`--b3-inline-style-${style.id}-${property === "color" ? "color" : "background-color"}:${style[mode][property]}`);
+        for (const color of data.builtin.colors) for (const property of ["color", "backgroundColor"] as const)
+          if (color[mode][property]) declarations.push(`--b3-font-${property === "color" ? "color" : "background"}${color.index}:${color[mode][property]}`);
+        const content: string[] = [];
+        for (const style of data.builtin.styles) for (const property of ["color", "backgroundColor"] as const)
+          if (style[mode][property]) content.push(`--b3-card-${style.id}-${property === "color" ? "color" : "background"}:${style[mode][property]}`);
+        return `:root[data-theme="${mode}"] {${declarations.join(";")}} :root[data-theme="${mode}"] .protyle-wysiwyg {${content.join(";")}}`;
+      }).join("\n");
+      if (broadcast) bus.emit("ws-main", { cmd: "reloadInlineStyles" });
+    },
     protyle,
     bus,
     undo: () => historyStep(false),
@@ -263,3 +326,6 @@ Object.assign(window, {
     get blockReadBatches() { return blockReadBatches; },
   },
 });
+// Reproduce native host styles when the preview frontend is reloaded.
+if (nativeStyleData.styles.length || nativeStyleData.builtin.colors.length || nativeStyleData.builtin.styles.length)
+  (window as any).annotationPreview.setNativeStyles(nativeStyleData, false);

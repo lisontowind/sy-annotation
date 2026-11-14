@@ -5,10 +5,11 @@ import { mkdir, readFile, writeFile, stat } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { startPreview } from "./preview.mjs";
 import { captureDemo } from "./marketplace-demo.mjs";
-import { captureNative, prepareNativeDocuments, nativeApi } from "./marketplace-native.mjs";
+import { captureNative, prepareNativeDocuments, restoreNativeSettings } from "./marketplace-native.mjs";
 
 const assets = "docs/assets";
-const review = "artifacts/marketplace-review-0.3.8";
+const { version } = JSON.parse(await readFile("plugin.json", "utf8"));
+const review = `artifacts/marketplace-review-${version}`;
 await mkdir(assets, { recursive: true });
 await mkdir(`${assets}/en`, { recursive: true });
 await mkdir(review, { recursive: true });
@@ -97,7 +98,7 @@ async function render(filename, width, height, body, extra = "", english = false
   }
 }
 
-const foot = (right = "ANNOTATION OUTLINE · 0.3.8") => `<div class="foot"><span>真实插件界面 · 演示宿主与示例文档</span><span>${right}</span></div>`;
+const foot = (right = `ANNOTATION OUTLINE · ${version}`) => `<div class="foot"><span>真实插件界面 · 演示宿主与示例文档</span><span>${right}</span></div>`;
 const title = (n, heading, sub) => `<div class="eyebrow">ANNOTATION OUTLINE / ${n}</div><h1>${heading}</h1><p>${sub}</p>`;
 const note = (n, heading, sub) => `<div class="note"><span class="num">${n}</span><h3>${heading}</h3><p>${sub}</p></div>`;
 
@@ -150,7 +151,7 @@ try {
     <div><h3 style="font-size:22px;margin:0 0 15px"><span class="num" style="margin:0 10px 0 0">2</span>预览后批量修改</h3><div class="frame"><img src="${png(batch)}"></div><p style="font-size:17px;margin-top:20px">选择源样式、目标工具、替换模式与范围。<br>确认后整批作为一次思源原生撤销操作。</p></div>
     </div>${foot()}
   `);
-  await render(`${assets}/usage-04-tools.png`, 1600, 1060, `
+  await render(`${assets}/usage-04-tools.png`, 1600, 1200, `
     ${title("04 / PERSONALIZE", "为自己的阅读，留一套标注语言。", "调整颜色与组合效果，实时预览；工具也可以继承思源当前选中的一个样式。")}
     <div class="frame" style="position:absolute;left:60px;top:250px;width:880px"><img src="${png(tools)}"></div>
     <div style="position:absolute;left:1010px;right:60px;top:232px">
@@ -176,7 +177,6 @@ try {
   await browser.close();
   if (server) await new Promise(resolve => server.close(resolve));
   if (native) {
-    const appearance = JSON.parse(await readFile(`${review}/native-backup/appearance.json`, "utf8"));
-    await nativeApi("/api/setting/setAppearance", appearance);
+    await restoreNativeSettings();
   }
 }

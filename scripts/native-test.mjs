@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -118,7 +119,7 @@ try {
     )
       fullReads++;
   });
-  await page.locator('.sya-panel [data-tool-id="wave"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "wave");
   await page.locator('.sya-panel .sya-continuous').click();
   await page.evaluate(() => {
     const plugin = window.siyuan.ws.app.plugins.find(
@@ -177,7 +178,7 @@ try {
   await page.locator(".sya-panel .sya-new-tool").click();
   await page.locator('[data-field="label"]').fill("原生组合验收");
   await page.locator('[data-mark="strong"]').check();
-  await page.locator('[data-field="background-color"]').fill("#e6edc9");
+  await selectStyle(page, '[data-color-property="background-color"]', "native:backgroundColor:4");
   await page
     .locator('[data-field="text-decoration-style"]')
     .selectOption("wavy");
@@ -194,7 +195,7 @@ try {
         .find((plugin) => plugin.name === "sy-annotation")
         .config.tools.find((tool) => tool.label === "原生组合验收").id,
   );
-  await page.locator(`.sya-panel [data-tool-id="${customId}"]`).click();
+  await selectStyle(page, ".sya-panel .sya-palette", customId);
   await page.locator('.sya-panel .sya-continuous').click();
   await page.evaluate(() => {
     const plugin = window.siyuan.ws.app.plugins.find(

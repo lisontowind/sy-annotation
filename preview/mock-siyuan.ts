@@ -34,3 +34,25 @@ export const showMessage = (text: string) => {
   clearTimeout(messageTimer);
   messageTimer = setTimeout(() => { node.style.display = "none"; }, 3500);
 };
+
+export const openSetting = (_app: unknown) => {
+  const root = document.createElement("div"); root.className = "b3-dialog--open"; root.hidden = true;
+  const side = document.createElement("div"); side.className = "config__side";
+  const appearance = document.createElement("button"); appearance.dataset.name = "appearance"; side.append(appearance); root.append(side);
+  for (const group of ["style1", "color", "backgroundColor"]) {
+    const button = document.createElement("button"); button.id = `manageColors-${group}`;
+    button.addEventListener("click", () => {
+      const dialog = document.createElement("dialog"); dialog.className = "sya-manager b3-dialog--open sya-preview-native-colors"; dialog.dataset.nativeStyleGroup = group;
+      const header = document.createElement("div"); header.className = "sya-manager__header";
+      const title = document.createElement("strong"); title.textContent = t("管理颜色");
+      const close = document.createElement("button"); close.className = "sya-icon-button"; close.textContent = "×"; close.setAttribute("aria-label", t("关闭颜色管理")); close.addEventListener("click", () => dialog.remove());
+      header.append(title, close);
+      const body = document.createElement("div"); body.className = "sya-dialog-body"; body.textContent = t("预览环境仅展示原生管理入口，请在思源中修改颜色。");
+      dialog.append(header, body); dialog.addEventListener("cancel", event => { event.preventDefault(); dialog.remove(); });
+      document.body.append(dialog); dialog.showModal();
+    });
+    root.append(button);
+  }
+  document.body.append(root);
+  return { element: root, destroy: () => root.remove() };
+};

@@ -1,3 +1,25 @@
+# 标注大纲 / Annotation Outline 0.4.0
+
+## 中文
+
+- 统一接入思源原生样式库，同步自定义样式、顺序、隐藏状态和浅深配色；插件独立记住当前标注样式。
+- 新增原生「默认样式、默认文字颜色、默认背景颜色」，并可从分组末尾的齿轮直接打开思源颜色管理；返回时保留筛选与批量修改草稿。
+- 压缩侧栏顶部，统一工具栏、筛选和批量面板；样式选择浮层自动避开窗口边缘，批量修改提供清晰的源样式、目标样式与前后预览。
+- 新增按原生样式引用查找，区分外观相同的不同样式；支持全文、筛选范围及未加载标注的批量替换。
+- 保留旧固定色与浅深色表达式，提供可预览、可备份的旧颜色迁移入口。
+- 优化当前位置卡片提示与筛选同步，保留原生事务、一次撤销和过期预览保护。
+
+## English
+
+- Unified the native SiYuan style library, including custom styles, ordering, visibility and light/dark colors. The plugin remembers its annotation style independently.
+- Added native defaults for styles, text colors and backgrounds, with direct access to SiYuan’s color manager. Filter and batch drafts survive the round trip.
+- Made the sidebar more compact and aligned toolbars, filters and batch dialogs. Style popups stay within the window; batch changes clearly show the source, target and before/after preview.
+- Added native-style reference matching to distinguish identical-looking styles, including batch changes across the document, filtered results and unloaded annotations.
+- Preserved existing fixed and dual-theme colors, with previewed migration and tool backups.
+- Improved current-position feedback and filter synchronization while retaining native transactions, one-step undo and stale-preview protection.
+
+---
+
 # 标注大纲 / Annotation Outline 0.3.9
 
 ## 中文

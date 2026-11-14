@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -29,6 +30,11 @@ try {
   const errors = []; page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (message) => { if (message.text().includes("[sy-annotation]")) console.log(message.text()); });
   const waitCount = async (n) => page.waitForFunction((n) => document.querySelector(".sya-document__count")?.textContent === String(n) && !document.querySelector('.sya-tree[aria-busy="true"]'), n, { timeout: 120000 });
+  const nativeHistory = async (redo = false) => page.evaluate(async redo => {
+    const protyle = window.siyuan.ws.app.plugins.find(plugin => plugin.name === "sy-annotation").active;
+    await protyle.undo[redo ? "redo" : "undo"](protyle);
+    await protyle.getInstance().flushPendingTransactions();
+  }, redo);
   await page.goto(`${base}/?id=${doc}`);
   await page.waitForFunction((doc) => window.siyuan?.ws?.app?.plugins?.find((p) => p.name === "sy-annotation")?.rootId === doc, doc, { timeout: 30000 });
   const dockType = await page.evaluate(() => Object.keys(window.siyuan.ws.app.plugins.find((p) => p.name === "sy-annotation").docks)[0]);
@@ -44,14 +50,14 @@ try {
   assert.ok(/text-decoration-style:\s*wavy/.test((await api("/api/block/getBlockDOM", { id: doc })).dom), "wave must persist");
   console.log("native v3: single replacement persisted");
   await page.locator('.protyle-wysiwyg [contenteditable="true"]').first().click();
-  await page.keyboard.press("Control+z");
+  await nativeHistory();
   await page.waitForFunction(() => ![...document.querySelectorAll(".sya-card__sample")].some((n) => getComputedStyle(n).textDecorationStyle === "wavy"));
   await waitCount(3000);
   // Exact source style from the card, including all unloaded marks in this document.
   await page.locator(".sya-card").filter({ hasText: /^长文标注 0$/ }).click({ button: "right" });
   await page.locator(".sya-bulk-same").click();
   assert.equal(await page.locator(".sya-batch-source-kind").inputValue(), "signature");
-  await page.locator(".sya-batch-target").selectOption("wave");
+  await selectStyle(page, ".sya-batch-target", "wave");
   const previewStarted = Date.now();
   await page.waitForFunction(() => {
     const status = document.querySelector(".sya-replacement-dialog .sya-dialog-status")?.textContent || "";
@@ -86,13 +92,13 @@ try {
   assert.ok(await page.locator(".sya-card").count() < 60);
   assert.ok(await page.locator(".protyle-wysiwyg [data-node-id]").count() < 10000);
   await page.locator('.protyle-wysiwyg [contenteditable="true"]').first().click();
-  await page.keyboard.press("Control+z");
+  await nativeHistory();
   await page.waitForFunction(() => ![...document.querySelectorAll(".sya-card__sample")].some((n) => getComputedStyle(n).textDecorationStyle === "wavy"), null, { timeout: 120000 });
   await waitCount(3000);
   const undo = (await api("/api/block/getBlockDOM", { id: doc })).dom;
   assert.equal((undo.match(/text-decoration-style:\s*wavy/g) || []).length, 0);
   assert.equal((undo.match(/data-type="mark"/g) || []).length, 3000);
-  await page.keyboard.press("Control+y");
+  await nativeHistory(true);
   await page.waitForFunction(() => [...document.querySelectorAll(".sya-card__sample")].some((n) => getComputedStyle(n).textDecorationStyle === "wavy"), null, { timeout: 120000 });
   await waitCount(3000);
   assert.equal(((await api("/api/block/getBlockDOM", { id: doc })).dom.match(/text-decoration-style:\s*wavy/g) || []).length, 3000);

@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -6,7 +7,8 @@ import ts from "typescript";
 
 const base = "http://127.0.0.1:6917";
 const workspace = path.resolve("artifacts/acceptance-0.2.0/workspace");
-const review = "artifacts/marketplace-review-0.3.8";
+const { version } = JSON.parse(await readFile("plugin.json", "utf8"));
+const review = `artifacts/marketplace-review-${version}`;
 export async function nativeApi(route, body = {}) {
   const r = await (await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json();
   assert.equal(r.code, 0, `${route}: ${r.msg}`); return r.data;
@@ -15,14 +17,36 @@ export async function verifyNativeWorkspace() {
   const active = (await nativeApi("/api/system/getWorkspaces")).filter(w => !w.closed);
   assert.equal(active.length, 1); assert.equal(path.resolve(active[0].path), workspace, "Refusing to use any other SiYuan workspace");
 }
+async function saveNativeTools(tools) {
+  const form = new FormData(); form.set("path", "/data/storage/petal/sy-annotation/tools.json");
+  form.set("file", new Blob([JSON.stringify(tools)], { type: "application/json" }), "tools.json");
+  const saved = await (await fetch(base + "/api/file/putFile", { method: "POST", body: form })).json();
+  assert.equal(saved.code, 0);
+}
+export async function restoreNativeSettings() {
+  await verifyNativeWorkspace();
+  const appearance = JSON.parse(await readFile(`${review}/native-backup/appearance.json`, "utf8"));
+  await nativeApi("/api/setting/setAppearance", appearance);
+  await saveNativeTools(JSON.parse(await readFile(`${review}/native-backup/tools-before.json`, "utf8")));
+}
 export async function prepareNativeDocuments() {
   await verifyNativeWorkspace();
+  await mkdir(`${review}/native-backup`, { recursive: true });
+  for (const [name, read] of [
+    ["tools-before.json", () => readFile(path.join(workspace, "data/storage/petal/sy-annotation/tools.json"), "utf8")],
+    ["appearance.json", async () => JSON.stringify((await nativeApi("/api/system/getConf")).conf.appearance)],
+  ]) {
+    try { await readFile(`${review}/native-backup/${name}`, "utf8"); }
+    catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      await writeFile(`${review}/native-backup/${name}`, await read());
+    }
+  }
   await nativeApi("/api/petal/setPetalEnabled", { packageName: "sy-annotation", enabled: true });
   const original = JSON.parse(await readFile(`${review}/native-backup/tools-before.json`, "utf8"));
   const tools = { version: 1, tools: original.tools.filter(t => ["yellow", "green", "blue", "pink", "underline", "wave"].includes(t.id)), selectedId: "yellow" };
-  const form = new FormData(); form.set("path", "/data/storage/petal/sy-annotation/tools.json");
-  form.set("file", new Blob([JSON.stringify(tools)], { type: "application/json" }), "tools.json");
-  const saved = await (await fetch(base + "/api/file/putFile", { method: "POST", body: form })).json(); assert.equal(saved.code, 0);
+  assert.equal(tools.tools.length, 6, "The isolated artwork workspace must contain the six starter tools");
+  await saveNativeTools(tools);
   let meta; try { meta = JSON.parse(await readFile(`${review}/native-documents.json`, "utf8")); } catch { meta = {}; }
   let notebook = (await nativeApi("/api/notebook/lsNotebooks")).notebooks.find(n => n.name === "标注大纲 · 展示示例");
   if (!notebook) {
@@ -99,7 +123,7 @@ export async function captureNative(browser, _url, directory, locale = "zh-CN") 
     const dark = await shot("dark");
     await nativeApi("/api/system/setAppearanceMode", { mode: 0 });
     await page.waitForFunction(() => { const color=getComputedStyle(document.querySelector('.protyle')).backgroundColor; return document.documentElement.dataset.themeMode === "light" && Number(color.match(/\d+/)?.[0]) > 128; });
-    await page.locator('.sya-panel .sya-swatch[data-tool-id="green"]').click();
+    await selectStyle(page, ".sya-panel .sya-palette", "green");
     await page.locator(".sya-panel .sya-continuous").click();
     await page.evaluate(id => {
       const editable = document.querySelector(`[data-node-id="${id}"] [contenteditable=true]`);
@@ -125,12 +149,13 @@ export async function captureNative(browser, _url, directory, locale = "zh-CN") 
     for (const tool of ["yellow", "green"]) {
       await nested.locator(":scope > .sya-rule-actions .sya-add-condition").click();
       nested = root.locator(":scope > .sya-rule-group");
+      await nested.locator(":scope > .sya-rule-condition").last().locator(".sya-rule-field").selectOption("tool");
       await nested.locator(":scope > .sya-rule-condition").last().locator(".sya-rule-value").selectOption(tool);
     }
     await page.waitForFunction(text => document.querySelector(".sya-filter-dialog .sya-dialog-status")?.textContent === text, en ? "3 annotations matched" : "命中 3 处标注");
     const filter = await page.locator(".sya-filter-dialog").screenshot({ path: `${directory}/dialog-filter.png` });
     await page.getByRole("button", { name: en ? "Cancel filters" : "取消筛选", exact: true }).click();
-    await page.locator(".sya-open-bulk").click(); await page.locator(".sya-batch-target").selectOption("blue");
+    await page.locator(".sya-open-bulk").click(); await selectStyle(page, ".sya-batch-target", "blue");
     await page.waitForFunction(() => !document.querySelector(".sya-batch-execute").disabled);
     assert.equal(await page.locator(".sya-batch-execute").textContent(), en ? "Change 1" : "修改 1 处");
     const batch = await page.locator(".sya-replacement-dialog").screenshot({ path: `${directory}/dialog-batch.png` });

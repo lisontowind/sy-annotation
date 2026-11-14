@@ -6,7 +6,7 @@ Annotation Outline is a desktop plugin for SiYuan Note. It collects highlights, 
 
 [简体中文](README.md) · [Development and validation (Chinese)](docs/DEVELOPMENT.md)
 
-![Annotation Outline overview](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/overview.png)
+![Annotation Outline overview](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/overview.png)
 
 > Images were captured in an isolated SiYuan 3.8.10 test workspace, using the real editor, built-in themes and dedicated sample documents. Screenshots use SiYuan's desktop browser interface. Appearance varies with the SiYuan version and theme. Documentation images load from pinned GitHub URLs and require an internet connection.
 
@@ -30,7 +30,7 @@ Open a document and the Annotation Outline dock on the right. Select a style in 
 
 Choosing a style alone does not change an existing selection or enable continuous annotation. The dock's pen button opens a floating toolbar; the SiYuan top-bar button and shortcut can also toggle it.
 
-![Choose a style and annotate](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-01-annotate.png)
+![Choose a style and annotate](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-01-annotate.png)
 
 ## 2. Review in context
 
@@ -38,7 +38,7 @@ Cards are organized under their headings. Empty branches are hidden. Search anno
 
 The crosshair locates the annotation under the cursor or a nearby annotation in the same section. Double-click to enable automatic following. If filters hide the target, the plugin asks you to clear them without changing them automatically.
 
-![Review, search and locate annotations](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-02-outline.png)
+![Review, search and locate annotations](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-02-outline.png)
 
 ## 3. Filter and change styles
 
@@ -51,33 +51,42 @@ Open “Batch restyle” to choose a source style, target tool, replacement mode
 
 You can also right-click a card to change it or prefill a batch for its exact style. A batch is saved as one native SiYuan undo operation. Preparation and validation can be canceled; once saving starts, wait for completion. Large batches take longer to save.
 
-![Combined filters and batch previews](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-03-filter-batch.png)
+![Combined filters and batch previews](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-03-filter-batch.png)
 
-## 4. Customize your tools
+## 4. Sync SiYuan styles and combine effects
 
-Four highlight colors, underline and a red wavy underline are included. Use `+` to add a tool, the gear to manage tools, or right-click a style to edit or delete it. Names, order, colors and combined effects can be previewed while editing.
+The sidebar and floating toolbar follow SiYuan’s native groups: Recently used, Styles, Text color, Background color and Text effects. Custom styles, names, ordering, visibility and light/dark colors sync from SiYuan. Manage global styles in SiYuan; choosing a style there does not change the plugin’s independently selected annotation style.
 
-The inherit option copies the single style most recently selected in SiYuan's text-style panel into an independent tool.
+The first choice in Styles, Text color and Background color restores the native default for that group. The gear at the end of each group opens SiYuan’s color manager directly. Closing it returns to your filter or batch dialog with the unfinished settings preserved.
 
-Editing or deleting a tool affects future actions. Existing document formatting remains unchanged, including after uninstalling the plugin. Use card replacement or batch changes to update existing annotations.
+Use `+` or the gear to combine native colors with effects such as a wavy underline or bold. Existing tools remain in the Combination tools section. The inherit option retains the native references of SiYuan’s latest style. Choosing a style selects it; use Annotate or Continuous annotation to apply it.
 
-![Customize annotation tools](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/usage-04-tools.png)
+Editing a combination tool affects future actions. Editing a native color changes the appearance of all text referencing that style without rewriting the document. Use card replacement or batch changes to replace historical references. Saved formatting remains after uninstalling the plugin.
 
-## Light and dark appearances
+![Customize annotation tools](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-04-tools.png)
 
-Default tools use SiYuan theme color variables. Inherited or explicitly fixed colors retain their saved values. Third-party themes can produce different results.
+## Native style search and light/dark appearances
 
-![SiYuan built-in dark theme](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.3.8/docs/assets/en/interface-dark.png)
+Find by style and More filters use the same native library. Native style conditions match stable references, distinguishing different styles with identical colors. Color and Complete style conditions remain available for finding older fixed colors or matching visual appearance. Text search covers annotation content and headings in the current document, combined with style and section rules. Counts, result navigation and batch changes within filtered results share the same matches.
+
+Native style changes sync automatically, including renaming, recoloring, sorting, hiding and deletion. The plugin remembers its own selected style. Hiding changes available choices; deleting the selected native style stops annotation and asks for a new choice. Sync failures keep the previous library and offer retry. Older hosts without the library API offer built-in styles and an update notice.
+
+Existing fixed colors and light/dark expressions are preserved. Under **Migrate older styles → Repair old colors** in tool settings, explicitly map older tools or document colors to native SiYuan colors, preview, then confirm. Document repairs include unloaded annotations and support one native undo. Tool repairs retain the latest backup for restoration.
+
+
+Third-party themes can produce different results.
+
+![SiYuan built-in dark theme](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/interface-dark.png)
 
 ## Installation and compatibility
 
-Current version: **0.3.9**. Declared minimum SiYuan version: **3.2.0**. Native annotation and saving behavior was previously validated in an isolated SiYuan **3.8.10** workspace. The new Chinese and English screenshots come from that workspace, with continuous annotations checked against native saved content. Demo-host browser regression checks also pass. Older versions show an error if a necessary style API is unavailable.
+Current version: **0.4.0**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
 
 **Chinese and English interfaces are supported.** The plugin follows SiYuan's interface language. Change SiYuan's language and restart as prompted. The sidebar, toolbar, filters, batch changes, tool settings and messages are localized. Custom tool names and document content stay as you wrote them.
 
 Supports desktop, desktop browser and desktop windows; dock support in separate windows depends on SiYuan. Mobile and PDF-canvas annotations are outside this version's scope. Cross-device synchronization, third-party themes and multiwindow combinations require further testing in your environment.
 
-Once listed, search for “标注大纲” in Settings → Bazaar → Plugins. For manual installation:
+Search for “标注大纲” in Settings → Bazaar → Plugins. For manual installation:
 
 1. Extract the release attachment `package.zip` into `data/plugins/sy-annotation/` in your workspace.
 2. Keep `plugin.json`, `index.js`, `index-worker.js` and `index.css` directly inside that directory.

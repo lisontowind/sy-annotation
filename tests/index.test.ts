@@ -121,7 +121,8 @@ test("10,000 paragraphs and 3,000 marks are indexed in order and patching preser
 });
 
 test("combinations distinguish waves from solid lines and hex from RGB serialization", () => {
-  const engine = new IndexEngine("doc");
+  const engine = new IndexEngine("doc", STYLES.map(tool => tool.id === "wave" ?
+    { ...tool, styles: { ...tool.styles, "text-decoration-color": "#c65c68" } } : tool));
   const index = engine.load(
     p(
       "p",

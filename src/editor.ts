@@ -1,5 +1,7 @@
 import { t } from "./i18n";
 import type { IProtyle } from "siyuan";
+import { browserColor } from "./theme-colors";
+import { nativeDefaultGroup } from "./native-styles";
 import {
   cleanText,
   textNodes,
@@ -54,6 +56,15 @@ export function applyAnnotation(
   style: AnnotationStyle,
 ): boolean {
   if (!validateSelection(protyle, range)) return false;
+  const defaultGroup = nativeDefaultGroup(style.nativeRef);
+  if (defaultGroup) {
+    protyle.toolbar!.range = range;
+    window.getSelection()?.removeAllRanges(); window.getSelection()?.addRange(range);
+    // Delegate removal to SiYuan so colors on nested inline ancestors cannot leak back in.
+    protyle.toolbar!.setInlineMark(protyle, "text", "range", { type: defaultGroup, color: defaultGroup === "style1" ? "\u200b" : "" }, true);
+    protyle.toolbar!.element?.classList.add("fn__none");
+    return true;
+  }
   const instance = protyle.getInstance?.();
   if (!instance?.updateBatchTransaction)
     throw new Error(t("当前思源编辑器缺少批量文字格式事务接口"));
@@ -117,7 +128,7 @@ export function applyAnnotation(
         types.add(mark);
       }
       for (const [property, value] of Object.entries(style.styles))
-        span.style.setProperty(property, value);
+        span.style.setProperty(property, browserColor(value));
       if (
         style.marks.includes("u") &&
         span.style.textDecorationStyle &&

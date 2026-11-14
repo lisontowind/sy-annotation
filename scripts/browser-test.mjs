@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
@@ -46,63 +47,32 @@ try {
   await page.locator("#theme-toggle").click();
   await page.screenshot({ path: "test-results/preview-dark.png" });
   await page.locator("#theme-toggle").click();
-  // Both toolbars keep overflow horizontal and hide native scrollbar tracks.
+  // Native sections wrap into a bounded scrolling panel, including many saved combinations.
   await page.evaluate(() => {
     const plugin = window.annotationPreview.plugin;
     window.originalTools = plugin.config.tools;
-    plugin.config.tools = Array.from({ length: 30 }, (_, index) => ({
-      ...window.originalTools[index % window.originalTools.length],
-      id: `overflow-${index}`,
-      label: `溢出样式 ${index}`,
-    }));
-    plugin.updateTools();
-    plugin.toggleToolbar();
+    plugin.config.tools = Array.from({ length: 30 }, (_, index) => ({ ...window.originalTools[index % 6], id: `overflow-${index}`, label: `组合样式 ${index}` }));
+    plugin.updateTools(); plugin.toggleToolbar();
   });
   for (const selector of [".sya-panel .sya-palette", ".sya-tools--floating .sya-palette"]) {
-    const palette = page.locator(selector);
-    const metrics = await palette.evaluate((node) => ({
-      width: node.clientWidth,
-      scrollWidth: node.scrollWidth,
-      height: node.clientHeight,
-      scrollHeight: node.scrollHeight,
-      scrollbar: getComputedStyle(node).scrollbarWidth,
-      webkitScrollbar: getComputedStyle(node, "::-webkit-scrollbar").display,
-      overflowY: getComputedStyle(node).overflowY,
-    }));
-    assert.ok(metrics.scrollWidth > metrics.width);
-    assert.ok(metrics.scrollHeight <= metrics.height + 1);
-    assert.equal(metrics.scrollbar, "none");
-    assert.equal(metrics.webkitScrollbar, "none");
-    assert.equal(metrics.overflowY, "hidden");
-    await palette.hover();
-    await page.mouse.wheel(0, 120);
-    await page.waitForFunction((selector) => document.querySelector(selector).scrollLeft >= 100, selector);
-    await page.mouse.wheel(0, -120);
-    await page.waitForFunction((selector) => document.querySelector(selector).scrollLeft === 0, selector);
-    const box = await palette.boundingBox();
-    const x = box.x + Math.min(box.width - 25, 150);
-    const y = box.y + 18;
-    await page.mouse.move(x, y);
-    await page.mouse.down();
-    await page.mouse.move(x - 90, y, { steps: 10 });
-    await page.mouse.up();
-    assert.ok(await palette.evaluate((node) => node.scrollLeft >= 80));
-    assert.equal(await page.locator(".sya-editor-indicator").count(), 0, "drag must not activate a style");
+    const picker = page.locator(`${selector} .sya-style-picker`);
+    await picker.locator(":scope > summary").click();
+    const body = picker.locator(".sya-style-picker__body");
+    await body.waitFor({ state: "visible" });
+    const metrics = await body.evaluate(node => ({ width: node.clientWidth, scrollWidth: node.scrollWidth, height: node.clientHeight, scrollHeight: node.scrollHeight }));
+    assert.ok(metrics.scrollWidth <= metrics.width + 1); assert.ok(metrics.scrollHeight > metrics.height);
+    assert.equal(await picker.locator("[data-style-group]").count(), 4);
+    await body.hover(); await page.mouse.wheel(0, 180);
+    await page.waitForFunction(selector => document.querySelector(`${selector} .sya-style-picker__body`).scrollTop > 0, selector);
     assert.equal(await page.evaluate(() => window.annotationPreview.transactions), 0);
+    await picker.locator(":scope > summary").click();
   }
   await page.screenshot({ path: "test-results/overflow-toolbar.png" });
-  await page.evaluate(() => {
-    const plugin = window.annotationPreview.plugin;
-    plugin.config.tools = window.originalTools;
-    plugin.updateTools();
-    plugin.toggleToolbar();
-    for (const node of document.querySelectorAll(".sya-palette")) node.scrollLeft = 0;
-    delete window.originalTools;
-  });
+  await page.evaluate(() => { const plugin = window.annotationPreview.plugin; plugin.config.tools = window.originalTools; plugin.updateTools(); plugin.toggleToolbar(); delete window.originalTools; });
   const initialReads = await page.evaluate(
     () => window.annotationPreview.fullReads,
   );
-  await page.locator('.sya-panel [data-tool-id="yellow"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "yellow");
   assert.equal(await page.locator(".sya-editor-indicator").count(), 0, "selecting a style must not begin painting");
   await page.locator(".sya-panel .sya-continuous").click();
   await page.locator(".sya-editor-indicator").waitFor();
@@ -164,7 +134,7 @@ try {
   }
   await page.keyboard.press("Escape");
   await select(12, 23, false);
-  await page.locator('.sya-panel [data-tool-id="blue"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "blue");
   assert.equal(await page.evaluate(() => window.annotationPreview.transactions), 1, "selecting a style must not apply to the selection");
   await page.locator(".sya-panel .sya-apply").click();
   await count(8);
@@ -190,7 +160,7 @@ try {
   await page
     .locator('[data-field="text-decoration-style"]')
     .selectOption("wavy");
-  await page.locator('[data-field="text-decoration-color"]').fill("#bb5566");
+  await selectStyle(page, '[data-color-property="text-decoration-color"]', "native:color:1");
   await page.locator(".sya-save-tool").click();
   await page.waitForFunction(() =>
     document
@@ -208,14 +178,11 @@ try {
     ),
     7,
   );
-  assert.ok(
-    Object.values(custom.styles).every(
-      (value) => !String(value).includes("var("),
-    ),
-  );
+  assert.equal(custom.styles["background-color"], "var(--b3-font-background3)");
+  assert.equal(custom.styles["text-decoration-color"], "var(--b3-font-color1)");
   await page.screenshot({ path: "test-results/tool-settings.png" });
   await page.getByRole("button", { name: "关闭工具设置", exact: true }).click();
-  await page.locator(`.sya-panel [data-tool-id="${custom.id}"]`).click();
+  await selectStyle(page, ".sya-panel .sya-palette", custom.id);
   await page.locator(".sya-panel .sya-continuous").click();
   await select(30, 36);
   await count(9);
@@ -256,9 +223,7 @@ try {
   await page.screenshot({ path: "test-results/continuous-annotation.png" });
 
   const noteBeforeDeletion = await page.locator("#wysiwyg").innerHTML();
-  await page
-    .locator(`.sya-panel [data-tool-id="${custom.id}"]`)
-    .click({ button: "right" });
+  await selectStyle(page, ".sya-panel .sya-palette", custom.id, { button: "right" });
   await page.getByRole("button", { name: "删除工具", exact: true }).click();
   await page.waitForFunction(
     (id) => !document.querySelector(`.sya-panel [data-tool-id="${id}"]`),
@@ -279,7 +244,7 @@ try {
   await count(6);
   assert.equal(
     await page
-      .locator(".sya-panel .sya-swatch")
+      .locator(".sya-panel .sya-palette .sya-combination-swatch")
       .first()
       .getAttribute("data-tool-id"),
     "green",
@@ -288,7 +253,7 @@ try {
   const beforeInput = await page.evaluate(
     () => window.annotationPreview.transactions,
   );
-  await page.locator('.sya-panel [data-tool-id="yellow"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "yellow");
   await page.locator(".sya-search__input").fill("问题");
   await page.keyboard.press("Shift+ArrowLeft");
   await page.locator(".sya-panel .sya-apply").click();
@@ -499,7 +464,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: hidden-scrollbar wheel/drag on both toolbars without accidental painting, one-click painting, native combinations/undo, tool CRUD/import/order/persistence, 10,000 blocks + 3,000 annotations, virtualization, locate/follow, incremental edits/structure, stale responses, cleanup.",
+    "Browser checks passed: shared native panels with bounded scrolling and no accidental painting, one-click painting, native combinations/undo, tool CRUD/import/order/persistence, 10,000 blocks + 3,000 annotations, virtualization, locate/follow, incremental edits/structure, stale responses, cleanup.",
   );
 } finally {
   await browser?.close();

@@ -7,6 +7,7 @@ import {
   validateSelection,
 } from "../src/editor";
 import { STYLES, parseAnnotations } from "../src/model";
+import { buildNativeTools, emptyNativeStyles } from "../src/native-styles";
 import { installDOM, paragraph as p } from "./dom";
 
 function editor(content: string) {
@@ -109,6 +110,18 @@ test("repainting an existing underline does not toggle it off", () => {
     true,
   );
   assert.equal(calls.length, 0);
+});
+
+test("default color choices delegate removal on the saved range to the native editor", () => {
+  const tools = buildNativeTools(emptyNativeStyles());
+  for (const group of ["style1", "color", "backgroundColor"]) {
+    const { protyle, calls } = editor(p("p", '<span data-type="strong text" style="color:#123456;background-color:#fedcba">恢复配色</span>'));
+    const range = rangeIn('[data-type="strong text"]');
+    assert.equal(applyAnnotation({ protyle, range }, tools.find(tool => tool.id === `native:${group}:default`)!), true);
+    assert.equal(calls.length, 1); assert.equal(calls[0][0], protyle); assert.equal(calls[0][1], "text");
+    assert.deepEqual(calls[0][3], { type: group, color: group === "style1" ? "\u200b" : "" });
+    assert.equal(protyle.toolbar!.range, range); assert.equal(window.getSelection()!.toString(), "恢复配色");
+  }
 });
 
 test("jump selects the second occurrence and accounts for editor zero-width characters", () => {

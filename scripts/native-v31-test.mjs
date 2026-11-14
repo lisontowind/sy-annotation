@@ -1,3 +1,4 @@
+import { selectStyle } from "./style-picker-test-helpers.mjs";
 import { chromium } from "playwright";
 import { cp } from "node:fs/promises";
 import path from "node:path";
@@ -36,7 +37,7 @@ try {
   }, { paragraph, start, end });
   const flush = () => page.evaluate(() => window.siyuan.ws.app.plugins.find((p) => p.name === "sy-annotation").active.getInstance().flushPendingTransactions());
   await select(0, 0, 4);
-  await page.locator('.sya-panel [data-tool-id="blue"]').click();
+  await selectStyle(page, ".sya-panel .sya-palette", "blue");
   await flush(); assert.equal(await page.locator(".sya-editor-indicator").count(), 0);
   assert.doesNotMatch((await api("/api/block/getBlockDOM", { id: doc })).dom, /background-color/);
   await page.locator(".sya-panel .sya-apply").click();

@@ -1,6 +1,7 @@
 import { t } from "./i18n";
 import { cleanText, parseAnnotations, STYLE_PROPERTIES, type Annotation, type AnnotationTool } from "./model";
-import { appearanceOf, visualSignature, VISUAL_MARKS, type Appearance, type ColorEnvironment } from "./appearance";
+import { appearanceOf, replacementSignature, VISUAL_MARKS, type Appearance, type ColorEnvironment } from "./appearance";
+import { browserColor } from "./theme-colors";
 
 export type ReplacementMode = "replace" | "preserve";
 export interface ReplacementProgress {
@@ -11,10 +12,11 @@ export interface ReplacementProgress {
 }
 export type ProgressReporter = (progress: ReplacementProgress) => void;
 export interface ReplacementBlock { id: string; before: string; after: string; count: number; }
-export interface ReplacementPlan {
-  rootId: string; target: AnnotationTool; mode: ReplacementMode; blocks: ReplacementBlock[];
+export interface BlockEditPlan {
+  rootId: string; blocks: ReplacementBlock[];
   matched: number; changed: number; examples: { before: Annotation; after: Appearance }[];
 }
+export interface ReplacementPlan extends BlockEditPlan { target: AnnotationTool; mode: ReplacementMode; }
 export function snapshotBlocks(html: string, ids: string[]): Map<string, string> {
   const template = document.createElement("template"); template.innerHTML = html;
   const wanted = new Set(ids);
@@ -53,7 +55,7 @@ function targetSpan(text: string, target: AnnotationTool): HTMLElement {
   const span = document.createElement("span");
   span.textContent = text;
   const types = [...target.marks];
-  for (const [key, value] of Object.entries(target.styles)) span.style.setProperty(key, value);
+  for (const [key, value] of Object.entries(target.styles)) span.style.setProperty(key, browserColor(value));
   span.setAttribute("data-type", [...types, ...(span.style.length ? ["text"] : [])].join(" "));
   return span;
 }
@@ -88,7 +90,7 @@ export function replaceBlock(html: string, annotations: Annotation[], target: An
   const fresh = parseAnnotations(html, tools).annotations;
   for (const a of annotations) if (!fresh.some((b) => b.blockId === id && b.start === a.start && b.end === a.end && b.text === a.text && b.signature === a.signature))
     throw new Error(t("原文或样式已变化，请重新预览"));
-  const ranges = annotations.filter((a) => visualSignature(appearanceOf(a), env) !== visualSignature(replacedAppearance(appearanceOf(a), target, mode), env)).sort((a, b) => a.start - b.start);
+  const ranges = annotations.filter((a) => replacementSignature(appearanceOf(a), env) !== replacementSignature(replacedAppearance(appearanceOf(a), target, mode), env)).sort((a, b) => a.start - b.start);
   if (!ranges.length) return { id, before: html, after: html, count: 0 };
   for (let i = 1; i < ranges.length; i++) if (ranges[i].start < ranges[i - 1].end) throw new Error(t("待修改范围重叠"));
   const template = document.createElement("template"); template.innerHTML = html;

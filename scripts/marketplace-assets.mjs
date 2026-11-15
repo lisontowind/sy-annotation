@@ -47,8 +47,8 @@ const englishCopy = new Map([
   ["选择源样式、目标工具、替换模式与范围。<br>确认后整批作为一次思源原生撤销操作。", "Choose source, target, replacement mode and scope.<br>The whole batch is one native SiYuan undo operation."],
   ["预览后批量修改", "Preview, then apply"],
   ["为自己的阅读，留一套标注语言。", "Build your own annotation language."],
-  ["调整颜色与组合效果，实时预览；工具也可以继承思源当前选中的一个样式。", "Preview colors and combined effects, or copy the single style most recently selected in SiYuan."],
-  ["侧栏「＋」新建，齿轮打开设置；右键样式也可编辑或删除。", "Use + to create a tool, or the gear to manage tools. Right-click a style to edit or delete it."],
+  ["选中文字，点击组合工具区的加号，即可按选区样式新建并实时预览组合效果。", "Select styled text and click the plus in Combination tools to create and preview a combination."],
+  ["展开样式面板，点击组合工具的齿轮，在设置中新建与管理工具；右键样式也可编辑或删除。", "Open the style panel and use the Combination tools gear to create and manage tools in settings. Right-click a style to edit or delete it."],
   ["前景色、背景色、高亮、划线、加粗等效果可组合，边改边看预览。", "Combine text color, background, highlights, lines and bold, with a live preview."],
   ["修改或删除工具，只影响后续操作。已保存的原文格式在卸载后仍然保留。", "Editing tools affects future actions. Saved document formatting remains after uninstalling."],
   ["新建与管理工具", "Create and manage tools"],
@@ -152,10 +152,10 @@ try {
     </div>${foot()}
   `);
   await render(`${assets}/usage-04-tools.png`, 1600, 1200, `
-    ${title("04 / PERSONALIZE", "为自己的阅读，留一套标注语言。", "调整颜色与组合效果，实时预览；工具也可以继承思源当前选中的一个样式。")}
+    ${title("04 / PERSONALIZE", "为自己的阅读，留一套标注语言。", "选中文字，点击组合工具区的加号，即可按选区样式新建并实时预览组合效果。")}
     <div class="frame" style="position:absolute;left:60px;top:250px;width:880px"><img src="${png(tools)}"></div>
     <div style="position:absolute;left:1010px;right:60px;top:232px">
-    ${note("1", "新建与管理工具", "侧栏「＋」新建，齿轮打开设置；右键样式也可编辑或删除。")}
+    ${note("1", "新建与管理工具", "展开样式面板，点击组合工具的齿轮，在设置中新建与管理工具；右键样式也可编辑或删除。")}
     ${note("2", "组合自己的样式", "前景色、背景色、高亮、划线、加粗等效果可组合，边改边看预览。")}
     ${note("3", "历史标注继续保留", "修改或删除工具，只影响后续操作。已保存的原文格式在卸载后仍然保留。")}
     </div>${foot()}

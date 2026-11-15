@@ -9,6 +9,8 @@ interface PickerOptions {
   recent?: boolean;
   prefix?: [string, string][];
   context?: (tool: AnnotationTool, event: MouseEvent) => void;
+  manageTools?: () => void;
+  createTool?: () => void;
 }
 /** Shared SiYuan-shaped picker for painting, color fields, filtering and replacement. */
 export class StylePicker {
@@ -86,13 +88,13 @@ export class StylePicker {
       if (this.options.groups && !this.options.groups.includes(group)) continue;
       this.section(title, tools.filter(tool => tool.nativeRef?.group === group && !tool.hidden), group);
     }
-    this.section(t("组合工具"), tools.filter(tool => !tool.nativeRef));
+    this.section(t("组合工具"), tools.filter(tool => !tool.nativeRef), undefined, this.options.manageTools, this.options.createTool);
     if (current?.hidden) this.section(t("当前样式（已隐藏）"), [current]);
     this.body.append(element("p", "sya-picker-help", t("配色和样式在思源文字样式面板中管理")));
     this.positionPopup();
   }
-  private section(title: string, tools: AnnotationTool[], group?: string): void {
-    if (!tools.length) return;
+  private section(title: string, tools: AnnotationTool[], group?: NativeStyleGroup, manageTools?: () => void, createTool?: () => void): void {
+    if (!tools.length && !manageTools && !createTool) return;
     const section = element("section", "sya-picker-section");
     section.classList.toggle("sya-picker-section--combinations", tools.every(tool => !tool.nativeRef));
     if (group) section.dataset.styleGroup = group;
@@ -106,7 +108,6 @@ export class StylePicker {
       swatch.setAttribute("aria-pressed", String(tool.id === this.selected));
       const preview = element("span", "sya-swatch__sample", tool.nativeRef?.group === "backgroundColor" ? " " : "A");
       renderToolPreview(preview, tool); swatch.append(preview);
-      if (!tool.nativeRef) swatch.append(element("span", "sya-combination-label", toolLabel(tool)));
       if (!tool.nativeRef && this.options.context) swatch.addEventListener("contextmenu", event => { event.preventDefault(); this.close(); this.options.context!(tool, event); });
       grid.append(swatch);
     }
@@ -117,6 +118,16 @@ export class StylePicker {
       manage.dataset.nativeStyleGroup = group;
       manage.disabled = !nativeStyles.manageColors || nativeStyles.status === "fallback" || !!window.siyuan?.config?.readonly || !!window.siyuan?.isPublish;
       grid.append(manage);
+    }
+    if (createTool) {
+      grid.append(button("sya-swatch sya-new-combination", t("按选中文本新建组合样式"), icon("plus"), () => {
+        this.close(); createTool();
+      }));
+    }
+    if (manageTools) {
+      grid.append(button("sya-swatch sya-manage-tools", t("设置标注工具"), icon("settings"), () => {
+        this.close(); this.summary.focus({ preventScroll: true }); manageTools();
+      }));
     }
     this.body.append(section);
   }

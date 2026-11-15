@@ -160,6 +160,7 @@ export async function captureNative(browser, _url, directory, locale = "zh-CN") 
     assert.equal(await page.locator(".sya-batch-execute").textContent(), en ? "Change 1" : "修改 1 处");
     const batch = await page.locator(".sya-replacement-dialog").screenshot({ path: `${directory}/dialog-batch.png` });
     await page.getByRole("button", { name: en ? "Cancel batch restyle" : "取消批量修改", exact: true }).click();
+    await page.locator(".sya-panel .sya-palette summary").click();
     await page.locator(".sya-panel .sya-manage-tools").click();
     const tools = await page.locator(".sya-manager").screenshot({ path: `${directory}/dialog-tools.png` });
     assert.deepEqual(errors, []);

@@ -147,15 +147,16 @@ try {
     initialReads,
   );
 
-  await page.locator(".sya-panel .sya-new-tool").click();
+  await select(12, 23, false);
+  await page.evaluate(() => { window.siyuan.storage["local-fontstyles"] = ["backgroundColor\u200bvar(--b3-font-background9)"]; });
+  await page.locator(".sya-panel .sya-palette summary").click();
+  await page.locator(".sya-panel .sya-new-combination").click();
+  await page.locator(".sya-manager").waitFor();
   assert.equal(await page.locator('[data-field="indicator"]').count(), 0);
-  await page.locator(".sya-inherit-current").check();
-  await page.waitForFunction(() =>
-    document
-      .querySelector(".sya-manager__error")
-      ?.textContent.includes("已复制"),
-  );
-  await page.locator('[data-field="label"]').fill("继承的组合");
+  assert.equal(await page.locator(".sya-inherit-current").count(), 0);
+  assert.equal(await page.locator('[data-field="label"]').inputValue(), "新组合样式");
+  assert.equal(await page.evaluate(() => window.annotationPreview.transactions), 2, "creating a combination must not edit the document");
+  await page.locator('[data-field="label"]').fill("选区组合");
   await page.locator('[data-mark="strong"]').check();
   await page
     .locator('[data-field="text-decoration-style"]')
@@ -169,7 +170,7 @@ try {
   );
   const custom = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("tools.json")).tools.find(
-      (tool) => tool.label === "继承的组合",
+      (tool) => tool.label === "选区组合",
     ),
   );
   assert.equal(
@@ -222,6 +223,32 @@ try {
   );
   await page.screenshot({ path: "test-results/continuous-annotation.png" });
 
+  // The floating toolbar shares the shortcut and samples all effects before dialog focus moves.
+  await page.keyboard.press("Escape");
+  await select(30, 36, false);
+  await page.locator(".sya-tools--floating .sya-palette summary").click();
+  await page.locator(".sya-tools--floating .sya-new-combination").click();
+  await page.locator(".sya-manager").waitFor();
+  assert.equal(await page.locator('[data-mark="strong"]').isChecked(), true);
+  assert.equal(await page.locator('[data-mark="u"]').isChecked(), true);
+  assert.equal(await page.locator('[data-field="text-decoration-style"]').inputValue(), "wavy");
+  assert.equal(await page.locator(".sya-manager__sample").evaluate(node => node.style.backgroundColor), custom.styles["background-color"]);
+  assert.equal(await page.evaluate(() => window.annotationPreview.transactions), 3);
+  await page.getByRole("button", { name: "关闭工具设置", exact: true }).click();
+  for (const [start, end, message] of [[8, 16, "多种样式"], [24, 28, "没有可用于组合"]]) {
+    await select(start, end, false);
+    await page.locator(".sya-panel .sya-palette summary").click();
+    await page.locator(".sya-panel .sya-new-combination").click();
+    assert.equal(await page.locator(".sya-manager").count(), 0);
+    assert.ok((await page.locator("#messages").textContent()).includes(message));
+  }
+  await page.evaluate(() => window.getSelection().removeAllRanges());
+  await page.locator(".sya-panel .sya-palette summary").click();
+  await page.locator(".sya-panel .sya-new-combination").click();
+  assert.equal(await page.locator(".sya-manager").count(), 0);
+  assert.match(await page.locator("#messages").textContent(), /请先选中/);
+  assert.equal(await page.evaluate(() => window.annotationPreview.transactions), 3);
+
   const noteBeforeDeletion = await page.locator("#wysiwyg").innerHTML();
   await selectStyle(page, ".sya-panel .sya-palette", custom.id, { button: "right" });
   await page.getByRole("button", { name: "删除工具", exact: true }).click();
@@ -231,6 +258,7 @@ try {
   );
   assert.equal(await page.locator(".sya-editor-indicator").count(), 0);
   assert.equal(await page.locator("#wysiwyg").innerHTML(), noteBeforeDeletion);
+  await page.locator(".sya-panel .sya-palette summary").click();
   await page.locator(".sya-panel .sya-manage-tools").click();
   await page
     .getByRole("button", { name: "下移 黄色高亮", exact: true })

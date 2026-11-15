@@ -69,13 +69,28 @@ export async function captureDemo(browser, url, directory, locale = "zh-CN", ver
       assert.match(await page.locator("#messages").textContent(), /Changed 1 annotations/);
       await page.evaluate(() => window.annotationPreview.undo()); await ready(7);
     } else await page.getByRole("button", { name: en ? "Cancel batch restyle" : "取消批量修改", exact: true }).click();
+    if (verify) {
+      await page.evaluate(() => {
+        const sample = document.querySelector('#wysiwyg [data-type~="mark"]');
+        sample.closest('[contenteditable="true"]').focus();
+        const range = document.createRange(); range.selectNodeContents(sample);
+        window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
+      });
+      await page.locator(".sya-panel .sya-palette summary").click();
+      await page.locator(".sya-panel .sya-new-combination").click();
+      await page.locator(".sya-manager").waitFor();
+      await englishUI(".sya-manager");
+      assert.equal(await page.locator('[data-field="label"]').inputValue(), "New combination style");
+      assert.equal(await page.locator('[data-mark="mark"]').isChecked(), true);
+      await page.getByRole("button", { name: "Close tool settings", exact: true }).click();
+    }
+    await page.locator(".sya-panel .sya-palette summary").click();
     await page.locator(".sya-panel .sya-manage-tools").click();
     await englishUI(".sya-manager");
     const tools = await page.locator(".sya-manager").screenshot({ path: `${directory}/dialog-tools.png` });
     if (verify) {
       assert.equal(await page.locator('[data-field="label"]').inputValue(), "Yellow highlight");
-      await page.locator('.sya-manager input[type="checkbox"]').first().check();
-      await page.waitForFunction(() => document.querySelector(".sya-manager__error")?.textContent === "Style copied. You can adjust the combined effects.");
+      await page.locator('[data-mark="strong"]').check();
       await page.locator(".sya-save-tool").click();
       await page.waitForFunction(() => document.querySelector(".sya-manager__error")?.textContent === "Saved. Existing annotations remain unchanged.");
       assert.equal(await page.evaluate(() => window.annotationPreview.plugin.config.tools[0].label), "黄色高亮");

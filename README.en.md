@@ -6,7 +6,7 @@ Annotation Outline is a desktop plugin for SiYuan Note. It collects highlights, 
 
 [简体中文](README.md) · [Development and validation (Chinese)](docs/DEVELOPMENT.md)
 
-![Annotation Outline overview](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/overview.png)
+![Annotation Outline overview](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/overview.png)
 
 > Images were captured in an isolated SiYuan 3.8.10 test workspace, using the real editor, built-in themes and dedicated sample documents. Screenshots use SiYuan's desktop browser interface. Appearance varies with the SiYuan version and theme. Documentation images load from pinned GitHub URLs and require an internet connection.
 
@@ -30,7 +30,7 @@ Open a document and the Annotation Outline dock on the right. Select a style in 
 
 Choosing a style alone does not change an existing selection or enable continuous annotation. The dock's pen button opens a floating toolbar; the SiYuan top-bar button and shortcut can also toggle it.
 
-![Choose a style and annotate](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-01-annotate.png)
+![Choose a style and annotate](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-01-annotate.png)
 
 ## 2. Review in context
 
@@ -38,7 +38,7 @@ Cards are organized under their headings. Empty branches are hidden. Search anno
 
 The crosshair locates the annotation under the cursor or a nearby annotation in the same section. Double-click to enable automatic following. If filters hide the target, the plugin asks you to clear them without changing them automatically.
 
-![Review, search and locate annotations](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-02-outline.png)
+![Review, search and locate annotations](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-02-outline.png)
 
 ## 3. Filter and change styles
 
@@ -51,7 +51,7 @@ Open “Batch restyle” to choose a source style, target tool, replacement mode
 
 You can also right-click a card to change it or prefill a batch for its exact style. A batch is saved as one native SiYuan undo operation. Preparation and validation can be canceled; once saving starts, wait for completion. Large batches take longer to save.
 
-![Combined filters and batch previews](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-03-filter-batch.png)
+![Combined filters and batch previews](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-03-filter-batch.png)
 
 ## 4. Sync SiYuan styles and combine effects
 
@@ -59,11 +59,11 @@ The sidebar and floating toolbar follow SiYuan’s native groups: Recently used,
 
 The first choice in Styles, Text color and Background color restores the native default for that group. The gear at the end of each group opens SiYuan’s color manager directly. Closing it returns to your filter or batch dialog with the unfinished settings preserved.
 
-Use `+` or the gear to combine native colors with effects such as a wavy underline or bold. Existing tools remain in the Combination tools section. The inherit option retains the native references of SiYuan’s latest style. Choosing a style selects it; use Annotate or Continuous annotation to apply it.
+Select uniformly styled text, then click the plus in Combination tools to create a combination from its colors and text effects, preserving native color references and light/dark expressions. Adjust its name and effects before saving. Combinations appear as compact preview swatches; hover to see their names. Use the gear in the same section to manage tools and their order. Choosing a style selects it; use Annotate or Continuous annotation to apply it.
 
 Editing a combination tool affects future actions. Editing a native color changes the appearance of all text referencing that style without rewriting the document. Use card replacement or batch changes to replace historical references. Saved formatting remains after uninstalling the plugin.
 
-![Customize annotation tools](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/usage-04-tools.png)
+![Customize annotation tools](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-04-tools.png)
 
 ## Native style search and light/dark appearances
 
@@ -76,11 +76,11 @@ Existing fixed colors and light/dark expressions are preserved. Under **Migrate 
 
 Third-party themes can produce different results.
 
-![SiYuan built-in dark theme](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/en/interface-dark.png)
+![SiYuan built-in dark theme](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/interface-dark.png)
 
 ## Installation and compatibility
 
-Current version: **0.4.0**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
+Current version: **0.4.1**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
 
 **Chinese and English interfaces are supported.** The plugin follows SiYuan's interface language. Change SiYuan's language and restart as prompted. The sidebar, toolbar, filters, batch changes, tool settings and messages are localized. Custom tool names and document content stay as you wrote them.
 

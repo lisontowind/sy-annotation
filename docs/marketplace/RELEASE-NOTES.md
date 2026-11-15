@@ -1,3 +1,23 @@
+# 标注大纲 / Annotation Outline 0.4.1
+
+## 中文
+
+- 选中正文中样式一致的文字，点击「组合工具」区的「＋」，即可新建组合样式，保留原生颜色引用、浅深配色及文字效果。
+- 移除「继承思源最近使用的样式」选项；无有效选区、无样式或混合样式时提示重新选择。新建样式不会改写正文。
+- 组合工具改为紧凑的样式预览方格，隐藏名称文字，悬停可查看名称；加号和设置齿轮直接放在同一分组中。
+- 压缩侧栏工具栏，样式选择、标注和连续标注保持同一行，侧栏与浮动工具栏使用一致的组合工具入口。
+- 修复组合样式保存时下划线与删除线同时存在的效果保留，更新中英文介绍与使用图。
+
+## English
+
+- Select uniformly styled document text and click the plus in Combination tools to create a combination, preserving native color references, light/dark colors and text effects.
+- Removed copying from SiYuan’s most recently used style. Missing, unstyled or mixed selections show a helpful message. Creating a tool leaves the document unchanged.
+- Made combinations compact preview swatches with names available on hover. The plus and settings gear sit directly in the same group.
+- Kept style selection, Annotate and Continuous annotation on one sidebar row, with matching combination-tool entry points in both toolbars.
+- Preserved simultaneous underline and strike-through effects when saving combinations, and refreshed the Chinese and English illustrated guides.
+
+---
+
 # 标注大纲 / Annotation Outline 0.4.0
 
 ## 中文

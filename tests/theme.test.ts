@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { appearanceOf, readColorEnvironment, resolveValue, visualSignature } from "../src/appearance";
 import { browserColor, colorPair, THEME_MODE } from "../src/theme-colors";
-import { inheritCurrentStyle } from "../src/tool-manager";
+import { ToolManager } from "../src/tool-manager";
 import { loadToolConfig, parseAnnotations, STYLES } from "../src/model";
 import { emptyQuery, QueryEngine } from "../src/filters";
 import { repairAppearance, repairBlock, repairCandidates, repairTools } from "../src/color-repair";
@@ -23,21 +23,41 @@ test("theme expressions resolve nested variables, RGB commas, fallbacks and lega
   Object.defineProperty(globalThis, "CSS", { configurable: true, value: previous });
 });
 
-test("inheritance retains native palette, dual colors, shadow and hollow expressions", async () => {
+test("theme detection and stored configuration retain authored colors", () => {
   const dom = installDOM();
   Object.defineProperty(globalThis, "getComputedStyle", { configurable: true, value: dom.window.getComputedStyle.bind(dom.window) });
-  const host = { storage: { "local-fontstyles": ["style1\u200bvar(--b3-font-background12)\u200blight-dark(#123, #def)"] }, config: { appearance: { mode: 1 } } };
+  const host = { config: { appearance: { mode: 1 } } };
   Object.assign(window, { siyuan: host });
-  const style = await inheritCurrentStyle();
-  assert.equal(style.styles["background-color"], "var(--b3-font-background12)");
-  assert.equal(style.styles.color, "light-dark(#123, #def)");
   assert.equal(readColorEnvironment()[THEME_MODE], "dark");
-  for (const type of ["style2", "style4"]) {
-    host.storage["local-fontstyles"] = [type];
-    assert.ok(Object.values((await inheritCurrentStyle()).styles).some(value => value.includes("var(--b3-theme-")));
-  }
   const config = loadToolConfig({ version: 1, tools: [{ ...STYLES[0], styles: { color: "#123" } }], selectedId: "yellow" });
   assert.equal(config.version, 1); assert.equal(config.tools[0].styles.color, "#123");
+});
+
+test("a new combination saves sampled theme colors and simultaneous underline and strike-through without changing existing tools", async () => {
+  const dom = installDOM();
+  Object.defineProperty(globalThis, "getComputedStyle", { configurable: true, value: dom.window.getComputedStyle.bind(dom.window) });
+  Object.defineProperty(globalThis, "CSS", { configurable: true, value: { supports: () => true } });
+  const sampled = { marks: ["u", "s", "strong"] as const, styles: {
+    color: "light-dark(#123, #def)", "background-color": "var(--b3-font-background12)",
+    "text-decoration-line": "underline line-through", "text-decoration-style": "wavy",
+    "text-decoration-color": "var(--b3-font-color1)", "font-size": "20px",
+    "text-shadow": "1px 1px var(--b3-theme-surface-lighter)",
+    "-webkit-text-stroke": "0.2px var(--b3-theme-on-background)", "-webkit-text-fill-color": "transparent",
+  } };
+  const style = { ...sampled, marks: [...sampled.marks] };
+  const config = loadToolConfig(null), before = JSON.stringify(config.tools);
+  let saved = config.tools;
+  const manager = new ToolManager(config.tools, async tools => { saved = tools; }, undefined, true, undefined, style);
+  manager.element.querySelector("form")!.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await Promise.resolve();
+  assert.equal(saved.length, config.tools.length + 1);
+  const created = saved.at(-1)!;
+  assert.equal(created.label, "新组合样式");
+  assert.equal(visualSignature(created), visualSignature(style));
+  assert.equal(created.styles["background-color"], "var(--b3-font-background12)");
+  assert.equal(created.styles["text-decoration-color"], "var(--b3-font-color1)");
+  assert.equal(JSON.stringify(config.tools), before);
+  manager.close();
 });
 
 test("color and complete-style filters keep authored pairs across themes, including worker environments", () => {

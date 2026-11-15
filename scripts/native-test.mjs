@@ -175,7 +175,9 @@ try {
     "native edits/undo/redo must use incremental indexing",
   );
   await page.keyboard.press("Escape");
-  await page.locator(".sya-panel .sya-new-tool").click();
+  await page.locator(".sya-panel .sya-palette summary").click();
+  await page.locator(".sya-panel .sya-manage-tools").click();
+  await page.getByRole("button", { name: "新建工具", exact: true }).click();
   await page.locator('[data-field="label"]').fill("原生组合验收");
   await page.locator('[data-mark="strong"]').check();
   await selectStyle(page, '[data-color-property="background-color"]', "native:backgroundColor:4");

@@ -13,6 +13,7 @@ try {
   await page.goto(url);
   const ready = async (n) => page.waitForFunction((n) => document.querySelector(".sya-document__count")?.textContent === String(n) && !document.querySelector('.sya-tree[aria-busy="true"]'), n);
   await ready(6);
+  await page.locator(".sya-panel .sya-palette summary").click();
   await page.locator(".sya-manage-tools").click();
   const listStrip = await page.locator(".sya-manager__select").first().evaluate((node) => getComputedStyle(node, "::before").backgroundImage);
   assert.match(listStrip, /linear-gradient/);

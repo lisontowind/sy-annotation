@@ -4,6 +4,7 @@ import type { IProtyle } from "siyuan";
 import {
   applyAnnotation,
   focusAnnotation,
+  readSelectionStyle,
   validateSelection,
 } from "../src/editor";
 import { STYLES, parseAnnotations } from "../src/model";
@@ -52,6 +53,45 @@ function rangeIn(selector: string, start = 0, end?: number) {
   range.setEnd(node, end ?? node.textContent!.length);
   return range;
 }
+
+test("selection sampling preserves combined inline effects and native theme references without copying link identity", () => {
+  const { protyle, calls } = editor(p("p", '<span data-type="a strong text" data-href="https://example.test" style="color:light-dark(#123, #def);background-color:var(--b3-font-background12);text-shadow:1px 1px var(--b3-theme-surface-lighter);-webkit-text-stroke:0.2px var(--b3-theme-on-background);-webkit-text-fill-color:transparent;font-size:20px"><em><span data-type="u block-ref" data-id="ref" style="text-decoration-style:wavy;text-decoration-color:var(--b3-font-color1)">选中样式</span></em></span>'));
+  Object.assign(window, { siyuan: { storage: { "local-fontstyles": ["backgroundColor\u200bvar(--b3-font-background9)"] } } });
+  const before = protyle.wysiwyg!.element.outerHTML;
+  const style = readSelectionStyle({ protyle, range: rangeIn('[data-type="u block-ref"]', 1, 3) });
+  assert.deepEqual(style.marks.sort(), ["em", "strong", "u"]);
+  assert.equal(style.styles.color, "light-dark(#123, #def)");
+  assert.equal(style.styles["background-color"], "var(--b3-font-background12)");
+  assert.equal(style.styles["text-decoration-color"], "var(--b3-font-color1)");
+  assert.equal(style.styles["text-decoration-style"], "wavy");
+  assert.equal(style.styles["font-size"], "20px");
+  assert.match(style.styles["text-shadow"], /var\(--b3-theme-/);
+  assert.match(style.styles["-webkit-text-stroke"], /var\(--b3-theme-/);
+  assert.equal(protyle.wysiwyg!.element.outerHTML, before);
+  assert.equal(calls.length, 0);
+});
+
+test("selection sampling accepts uniform formatting across runs and rejects mixed or unstyled selections", () => {
+  const { protyle } = editor(p("p", '<strong>前段</strong><span data-type="strong a" data-href="https://example.test">后段</span><span data-type="text" style="color:red">不同</span>普通'));
+  const range = rangeIn("strong");
+  range.setEnd(document.querySelector('[data-type="strong a"]')!.firstChild!, 2);
+  assert.deepEqual(readSelectionStyle({ protyle, range }), { marks: ["strong"], styles: {} });
+  range.setEnd(document.querySelector('[data-type="text"]')!.firstChild!, 2);
+  assert.throws(() => readSelectionStyle({ protyle, range }), /多种样式/);
+  range.selectNodeContents(document.querySelector('[contenteditable="true"]')!.lastChild!);
+  assert.throws(() => readSelectionStyle({ protyle, range }), /没有可用于组合/);
+  range.collapse();
+  assert.throws(() => readSelectionStyle({ protyle, range }), /请先选中/);
+  assert.throws(() => readSelectionStyle(), /请先选中/);
+});
+
+test("selection sampling checks only selected runs and retains CSS-only text effects", () => {
+  const { protyle } = editor(p("p", '普通<span style="font-weight:700;font-style:italic;text-decoration-line:underline line-through">组合</span>普通'));
+  const style = readSelectionStyle({ protyle, range: rangeIn("span") });
+  assert.deepEqual(style.marks.sort(), ["em", "s", "strong", "u"]);
+  assert.equal(style.styles["font-weight"], undefined);
+  assert.equal(style.styles["font-style"], undefined);
+});
 
 test("painting makes one native batch and changes only the exact selected text", () => {
   const { protyle, calls } = editor(p("p", "高亮这一段文字"));

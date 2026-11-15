@@ -4,7 +4,6 @@ import {
   type NativeMark,
   STYLE_PROPERTIES,
 } from "./model";
-import { request } from "./api";
 import { paintStrip } from "./appearance";
 import { ColorField } from "./color-field";
 import { browserColor } from "./theme-colors";
@@ -18,46 +17,6 @@ import {
   toolAccentColor,
 } from "./ui";
 
-/** Copy one native entry without flattening its theme expressions into computed RGB values. */
-export async function inheritCurrentStyle(): Promise<
-  Pick<AnnotationTool, "marks" | "styles" | "color">
-> {
-  const live = window.siyuan?.storage?.["local-fontstyles"];
-  const recent = Array.isArray(live)
-    ? live
-    : await request<unknown>("/api/storage/getLocalStorageVal", {
-        key: "local-fontstyles",
-      });
-  const entry = Array.isArray(recent) ? recent[0] : undefined;
-  if (typeof entry !== "string")
-    throw new Error(t("请先在思源文字样式面板中选择一个样式，再继承"));
-  const [type, ...values] = entry.split("\u200b");
-  const styles: Record<string, string> = {};
-  if (type === "style1") {
-    if (values[0] && values[0] !== "undefined")
-      styles["background-color"] = values[0];
-    if (values[1] && values[1] !== "undefined") styles.color = values[1];
-  } else if (type === "color") styles.color = values[0];
-  else if (type === "backgroundColor") styles["background-color"] = values[0];
-  else if (type === "fontSize") styles["font-size"] = values[0];
-  else if (type === "style2") {
-    styles["-webkit-text-stroke"] = "0.2px var(--b3-theme-on-background)";
-    styles["-webkit-text-fill-color"] = "transparent";
-  } else if (type === "style4")
-    styles["text-shadow"] =
-      "1px 1px var(--b3-theme-surface-lighter), 2px 2px var(--b3-theme-surface-lighter), 3px 3px var(--b3-theme-surface-lighter), 4px 4px var(--b3-theme-surface-lighter)";
-  else
-    throw new Error(
-      t("当前样式是清除格式或不支持继承的类型，请先在思源面板选择颜色或文字效果"),
-    );
-  const color =
-    styles["text-decoration-color"] ||
-    styles.color ||
-    styles["background-color"] ||
-    "#8b849b";
-  return { marks: [], styles, color };
-}
-
 export class ToolManager {
   readonly element = element("dialog", "sya-manager");
   private list = element("div", "sya-manager__list");
@@ -70,11 +29,9 @@ export class ToolManager {
   );
   private tools: AnnotationTool[];
   private draft!: AnnotationTool;
-  private inherit = element("input", "");
   private fields = new Map<string, HTMLInputElement | HTMLSelectElement>();
   private colors = new Map<string, ColorField>();
   private marks = new Map<NativeMark, HTMLInputElement>();
-  private generation = 0;
   private closed = false;
   private unsubscribe: () => void;
   private nativePicker?: StylePicker;
@@ -84,6 +41,7 @@ export class ToolManager {
     id?: string,
     create = false,
     repair?: () => void,
+    initialStyle?: Pick<AnnotationTool, "marks" | "styles">,
   ) {
     this.tools = structuredClone(tools);
     const heading = element("div", "sya-manager__header");
@@ -111,20 +69,19 @@ export class ToolManager {
     document.body.append(this.element);
     if (this.element.showModal) this.element.showModal();
     else this.element.setAttribute("open", "");
-    if (create || !tools.length) this.newTool();
+    if (create || !tools.length) this.newTool(initialStyle);
     else this.edit(this.tools.find((tool) => tool.id === id) ?? this.tools[0]);
   }
-  private newTool(): void {
+  private newTool(style?: Pick<AnnotationTool, "marks" | "styles">): void {
     this.edit({
       id: `tool-${crypto.randomUUID()}`,
-      label: t("新标注工具"),
-      color: "#c65c68",
-      marks: ["u"],
-      styles: {},
+      label: style ? t("新组合样式") : t("新标注工具"),
+      color: style ? toolAccentColor(style) : "#c65c68",
+      marks: style?.marks ?? ["u"],
+      styles: style?.styles ?? {},
     });
   }
   private edit(tool: AnnotationTool): void {
-    this.generation++;
     this.draft = structuredClone(tool);
     this.fields.clear();
     for (const color of this.colors.values()) color.destroy();
@@ -162,35 +119,6 @@ export class ToolManager {
     }, { label: t("选择思源样式") });
     this.nativePicker.update(nativeStyles.tools, "");
     this.form.append(this.nativePicker.element);
-    const inheritRow = element("label", "sya-checkbox");
-    this.inherit = element("input", "sya-inherit-current");
-    this.inherit.type = "checkbox";
-    inheritRow.append(
-      this.inherit,
-      element("span", "", t("继承思源最近使用的样式（保留原生引用）")),
-    );
-    this.form.append(inheritRow);
-    this.inherit.addEventListener("change", async () => {
-      const generation = ++this.generation;
-      if (!this.inherit.checked) return;
-      this.error.textContent = t("正在读取当前样式…");
-      try {
-        const inherited = await inheritCurrentStyle();
-        if (this.closed || generation !== this.generation) return;
-        this.edit({
-          ...this.draft,
-          ...inherited,
-          label: this.fields.get("label")!.value === toolLabel(this.draft) ? this.draft.label : this.fields.get("label")!.value,
-        });
-        this.inherit.checked = true;
-        this.error.textContent = t("已复制当前样式，可继续修改组合效果");
-      } catch (error) {
-        if (this.closed || generation !== this.generation) return;
-        this.inherit.checked = false;
-        this.error.textContent =
-          error instanceof Error ? error.message : t("读取失败");
-      }
-    });
     addColor("color", t("文字颜色"), tool.styles.color ?? "");
     addColor(
       "background-color",
@@ -289,6 +217,9 @@ export class ToolManager {
   }
   private readDraft(): AnnotationTool {
     const styles = { ...this.draft.styles };
+    const marks = [...this.marks]
+      .filter(([, input]) => input.checked)
+      .map(([mark]) => mark);
     for (const key of [
       "color",
       "background-color",
@@ -299,8 +230,11 @@ export class ToolManager {
       if (value) styles[key] = value;
       else delete styles[key];
     }
-    if (styles["text-decoration-style"])
-      styles["text-decoration-line"] = "underline";
+    if (styles["text-decoration-style"] && (marks.includes("u") || marks.includes("s")))
+      styles["text-decoration-line"] = [
+        ...(marks.includes("u") ? ["underline"] : []),
+        ...(marks.includes("s") ? ["line-through"] : []),
+      ].join(" ");
     else delete styles["text-decoration-line"];
     if ((this.fields.get("shadow") as HTMLInputElement)?.checked)
       styles["text-shadow"] ||=
@@ -316,9 +250,6 @@ export class ToolManager {
     const canonical = document.createElement("span");
     for (const [key, value] of Object.entries(styles))
       canonical.style.setProperty(key, browserColor(value));
-    const marks = [...this.marks]
-      .filter(([, input]) => input.checked)
-      .map(([mark]) => mark);
     return {
       ...this.draft,
       label: this.fields.get("label")!.value.trim() === toolLabel(this.draft) ? this.draft.label : this.fields.get("label")!.value.trim(),
@@ -437,7 +368,6 @@ export class ToolManager {
     this.unsubscribe();
     this.nativePicker?.destroy();
     for (const color of this.colors.values()) color.destroy();
-    this.generation++;
     this.element.remove();
   }
 }

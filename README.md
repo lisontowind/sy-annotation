@@ -4,7 +4,7 @@
 
 标注大纲是一个思源笔记桌面端插件。它把当前文档中的高亮、文字颜色与划线，按标题层级整理到侧栏。阅读时随手标注，回顾时沿着章节找到重点，点击卡片就能跳回原文。
 
-![标注大纲：按章节回顾原文中的重点](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/overview.png)
+![标注大纲：按章节回顾原文中的重点](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/overview.png)
 
 > 展示图来自思源 3.8.10 的独立测试工作空间，使用真实编辑器、原生主题及专门创建的示例文档；截图采用桌面浏览器界面。实际外观随思源版本和主题变化。介绍图片通过固定版本的 GitHub 链接加载，需要联网查看。
 
@@ -30,7 +30,7 @@
 
 选择样式本身只切换工具，不改写已有选区，也不自动开启连续标注。侧栏右上角的画笔按钮可显示浮动工具栏，思源顶栏按钮和快捷键也可切换显示。
 
-![使用步骤一：选择样式，单次标注或连续划选](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/usage-01-annotate.png)
+![使用步骤一：选择样式，单次标注或连续划选](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-01-annotate.png)
 
 ## 2. 沿着标题，回顾你的重点
 
@@ -38,7 +38,7 @@
 
 单击准星按钮定位当前位置：光标在标注内时定位到对应卡片，否则寻找同章节附近的标注。双击准星锁定自动跟随，再次双击解除。若目标被筛选隐藏，插件会提示清除筛选，不会自行修改条件。
 
-![使用步骤二：按标题回顾、搜索与定位标注](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/usage-02-outline.png)
+![使用步骤二：按标题回顾、搜索与定位标注](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-02-outline.png)
 
 ## 3. 先筛出目标，再统一改样式
 
@@ -51,7 +51,7 @@
 
 也可以右键单张卡片快速改样式，或选择「批量修改相同样式」预填完整源样式。整批修改作为一次思源原生撤销操作。准备和校验期间可以取消；保存开始后请等待完成，数量较多时需要更长时间。
 
-![使用步骤三：组合筛选与批量修改前后预览](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/usage-03-filter-batch.png)
+![使用步骤三：组合筛选与批量修改前后预览](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-03-filter-batch.png)
 
 ## 4. 同步思源样式，补充组合工具
 
@@ -59,13 +59,13 @@
 
 「样式、文字颜色、背景颜色」分组首项提供原生「默认」，恢复对应配色；分组末尾的齿轮直接打开思源颜色管理。关闭管理面板后会返回原来的筛选或批量面板，并保留尚未应用的设置。
 
-「＋」和齿轮用于补充自己的组合工具：从思源样式库选择配色，再添加波浪线、加粗等效果，可调整名称与顺序。原有工具完整保留在「组合工具」区域。
+展开样式面板后，「组合工具」以紧凑的样式预览方格排列，悬停可查看名称。分组末尾的齿轮打开工具设置，可在其中新建工具，调整名称、顺序、原生配色与波浪线、加粗等组合效果。
 
-勾选「继承思源最近使用的样式（保留原生引用）」，可沿用最近使用的配色并继续组合。选择原生样式只改变插件选择，点击「标注」或开启「连续标注」后才会写入正文。
+选中正文中样式一致的文字，点击「组合工具」区的「＋」，即可按选中文本的颜色和文字效果新建组合样式，保留原生颜色引用和浅深配色，再调整名称和效果后保存。选择原生样式只改变插件选择，点击「标注」或开启「连续标注」后才会写入正文。
 
 **组合工具的名称和效果只影响后续操作。** 修改思源原生配色时，所有关联该样式的文字会随之改变外观，正文内容无需改写。需要替换历史样式引用时，使用卡片替换或批量修改；插件卸载后已保存的格式仍然保留。
 
-![使用步骤四：管理工具与组合标注样式](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/usage-04-tools.png)
+![使用步骤四：管理工具与组合标注样式](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-04-tools.png)
 
 ## 原生样式查找与深浅色
 
@@ -77,11 +77,11 @@
 
 下图展示思源原生深色主题中的界面；第三方主题的最终效果可能不同。
 
-![思源原生深色主题中的标注大纲界面](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.0/docs/assets/interface-dark.png)
+![思源原生深色主题中的标注大纲界面](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/interface-dark.png)
 
 ## 安装与兼容
 
-**当前版本：0.4.0。** 最低声明版本为思源 3.2.0；原生标注、颜色管理与恢复默认配色已在思源 3.8.10 的独立工作空间中验证。中英文展示图来自该独立思源空间。旧版缺少原生样式库接口时使用内置样式并提示升级。
+**当前版本：0.4.1。** 最低声明版本为思源 3.2.0；原生标注、颜色管理与恢复默认配色已在思源 3.8.10 的独立工作空间中验证。中英文展示图来自该独立思源空间。旧版缺少原生样式库接口时使用内置样式并提示升级。
 
 **支持中文和英文界面。** 跟随思源的界面语言显示；切换思源语言并按思源提示重启后生效。侧栏、工具栏、筛选、批量修改、工具设置和操作提示均已提供英文。自定义工具名称与笔记内容保留原文。
 

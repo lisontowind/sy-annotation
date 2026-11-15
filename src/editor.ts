@@ -2,11 +2,14 @@ import { t } from "./i18n";
 import type { IProtyle } from "siyuan";
 import { browserColor } from "./theme-colors";
 import { nativeDefaultGroup } from "./native-styles";
+import { VISUAL_MARKS, visualSignature } from "./appearance";
 import {
   cleanText,
+  parseStyles,
   textNodes,
   type Annotation,
   type AnnotationStyle,
+  type NativeMark,
 } from "./model";
 
 export interface EditorSelection {
@@ -49,6 +52,49 @@ export function validateSelection(protyle: IProtyle, range: Range): boolean {
     if (range.intersectsNode(excluded)) return false;
   }
   return true;
+}
+
+/** Sample authored inline formatting, keeping native references and theme expressions. */
+export function readSelectionStyle(selection?: EditorSelection): Pick<AnnotationStyle, "marks" | "styles"> {
+  if (!selection || !validateSelection(selection.protyle, selection.range))
+    throw new Error(t("请先选中正文中有样式的文字，再点击组合样式区的加号"));
+  const tags: Record<string, NativeMark> = {
+    MARK: "mark", U: "u", STRONG: "strong", B: "strong", EM: "em", I: "em",
+    S: "s", DEL: "s", SUP: "sup", SUB: "sub",
+  };
+  let sampled: Pick<AnnotationStyle, "marks" | "styles"> | undefined;
+  let signature = "";
+  for (const { node, start, end, block } of selectedSegments(selection.protyle, selection.range)) {
+    if (!cleanText(node.data.slice(start, end)).trim()) continue;
+    const ancestors: HTMLElement[] = [];
+    for (let parent = node.parentElement; parent && parent !== block; parent = parent.parentElement)
+      ancestors.unshift(parent);
+    const marks = new Set<NativeMark>();
+    const styles: Record<string, string> = {};
+    for (const parent of ancestors) {
+      for (const type of (parent.getAttribute("data-type") ?? "").split(/\s+/))
+        if (VISUAL_MARKS.has(type)) marks.add(type as NativeMark);
+      if (tags[parent.tagName]) marks.add(tags[parent.tagName]);
+      Object.assign(styles, parseStyles(parent.getAttribute("style") ?? ""));
+    }
+    // Make CSS-only effects editable through the same controls as native inline marks.
+    if (/^(bold|700)$/i.test(styles["font-weight"] ?? "")) { marks.add("strong"); delete styles["font-weight"]; }
+    if (styles["font-style"] === "italic") { marks.add("em"); delete styles["font-style"]; }
+    if (styles["vertical-align"] === "super") { marks.add("sup"); delete styles["vertical-align"]; }
+    if (styles["vertical-align"] === "sub") { marks.add("sub"); delete styles["vertical-align"]; }
+    const decoration = styles["text-decoration-line"] || styles["text-decoration"] || "";
+    if (decoration.includes("underline")) marks.add("u");
+    if (decoration.includes("line-through")) marks.add("s");
+    const appearance = { marks: [...marks], styles };
+    const currentSignature = visualSignature(appearance);
+    if (sampled && signature !== currentSignature)
+      throw new Error(t("选中文本包含多种样式，请选择样式一致的文字"));
+    sampled ??= appearance;
+    signature = currentSignature;
+  }
+  if (!sampled || (!sampled.marks.length && !Object.keys(sampled.styles).length))
+    throw new Error(t("选中文本没有可用于组合的样式，请先设置颜色或文字效果"));
+  return sampled;
 }
 
 export function applyAnnotation(

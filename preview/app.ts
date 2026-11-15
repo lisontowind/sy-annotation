@@ -41,6 +41,7 @@ let fullReads = 0;
 let blockReadBatches = 0;
 const history: { before: string; after: string; ids: string[] }[] = [];
 let historyPosition = 0;
+let pendingNativeTransaction = Promise.resolve();
 let virtualSource: HTMLDivElement | undefined;
 const sourceElement = () => virtualSource ?? wysiwyg;
 const replaceSource = (html: string) => {
@@ -59,7 +60,7 @@ const protyle = {
   title: { editElement: title },
   wysiwyg: { element: wysiwyg },
   getInstance: () => ({
-    async flushPendingTransactions() {},
+    async flushPendingTransactions() { await pendingNativeTransaction; },
     transaction(operations: { id: string; data: string }[]) {
       const before = sourceElement().innerHTML;
       for (const operation of operations) {
@@ -73,7 +74,12 @@ const protyle = {
       const after = sourceElement().innerHTML;
       if (before === after) return;
       history.splice(historyPosition); history.push({ before, after, ids: operations.map((o) => o.id) }); historyPosition++; transactionCount++;
-      setTimeout(() => bus.emit("ws-main", { cmd: "transactions", data: [{ doOperations: operations.map((o) => ({ action: "update", ...o })) }] }), 20);
+      pendingNativeTransaction = new Promise(resolve => {
+        setTimeout(() => {
+          bus.emit("ws-main", { cmd: "transactions", data: [{ doOperations: operations.map((o) => ({ action: "update", ...o })) }] });
+          resolve();
+        }, 20);
+      });
     },
     updateBatchTransaction(
       blocks: HTMLElement[],

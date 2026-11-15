@@ -526,9 +526,6 @@
   padding-left: 8px;
   border-left: 1px solid var(--sya-border);
 }
-.sya-tools--floating .sya-tool-manager-buttons {
-  gap: 2px;
-}
 .sya-painting {
   position: relative;
 }
@@ -591,7 +588,7 @@
 @media (max-width: 600px) {
   .sya-tools--floating {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     width: min(400px, calc(100vw - 24px));
     gap: 8px;
   }
@@ -610,7 +607,7 @@
     border: 0;
   }
   .sya-tools--floating .sya-close-toolbar {
-    grid-column: 3;
+    grid-column: 2;
     grid-row: 1;
   }
   .sya-editor-indicator {
@@ -642,9 +639,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
-  padding: 8px;
+  padding: 6px;
 }
-.sya-panel .sya-tools__controls,
 .sya-panel .sya-tools__hint {
   grid-column: 1 / -1;
   margin: 0;
@@ -652,19 +648,29 @@
 .sya-panel .sya-palette {
   padding: 0;
 }
+.sya-panel .sya-palette .sya-style-picker > summary {
+  min-height: 30px;
+  padding: 4px 6px;
+  gap: 5px;
+}
+.sya-panel .sya-palette .sya-picker-current {
+  width: 18px;
+  height: 20px;
+}
 .sya-panel .sya-tools__controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  gap: 4px;
+}
+.sya-panel .sya-tools__controls > .sya-button {
+  min-height: 30px;
+  padding: 4px 6px;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .sya-panel .sya-button { min-width: 0; }
 .sya-panel .sya-button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sya-tools__hint {
   line-height: 1.6;
-}
-.sya-tool-manager-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0;
 }
 .sya-swatch {
   flex-shrink: 0;
@@ -999,6 +1005,7 @@
 .sya-style-picker[open] > summary .sya-picker-chevron { transform: rotate(180deg); }
 .sya-style-picker__body { position: absolute; z-index: 30; left: 0; top: calc(100% + 6px); width: min(320px, calc(100vw - 24px)); box-sizing: border-box; max-height: min(380px, 58vh); overflow-y: auto; overscroll-behavior: contain; padding: 12px; background: var(--sya-bg, var(--b3-theme-background)); border: 1px solid var(--sya-border, var(--b3-border-color)); border-radius: 8px; box-shadow: var(--b3-dialog-shadow, 0 6px 24px #0002); }
 .sya-panel .sya-style-picker__body:not([popover]) { width: 100%; }
+.sya-panel .sya-palette .sya-style-picker__body:not([popover]) { width: min(320px, calc(100cqw - 24px)); }
 .sya-tools--floating .sya-style-picker__body:not([popover]) { top: auto; bottom: calc(100% + 6px); }
 .sya-style-picker__body:popover-open { position: fixed; inset: auto; margin: 0; left: var(--sya-picker-left); top: var(--sya-picker-top); max-height: var(--sya-picker-max-height); color: inherit; }
 .sya-style-picker__status { display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 8px; color: var(--sya-muted, var(--b3-theme-on-surface)); font-size: 11px; }
@@ -1012,14 +1019,10 @@
 .sya-picker-grid .sya-default-swatch { border-color: var(--sya-border, var(--b3-border-color)); }
 .sya-default-swatch .sya-swatch__sample { color: var(--sya-fg, var(--b3-theme-on-background)); background: transparent; }
 .sya-default-swatch[data-tool-id="native:backgroundColor:default"] .sya-swatch__sample { background: linear-gradient(135deg, transparent 46%, var(--sya-muted, var(--b3-theme-on-surface)) 48%, var(--sya-muted, var(--b3-theme-on-surface)) 52%, transparent 54%); border: 1px solid var(--sya-border, var(--b3-border-color)); }
-.sya-picker-grid .sya-manage-native-colors { color: var(--sya-muted, var(--b3-theme-on-surface)); }
+.sya-picker-grid :is(.sya-manage-native-colors, .sya-manage-tools, .sya-new-combination) { color: var(--sya-muted, var(--b3-theme-on-surface)); }
 .sya-manage-native-colors:disabled { opacity: .45; cursor: default; }
 .sya-picker-grid .sya-swatch__sample { display: inline-flex; align-items: center; justify-content: center; min-width: 21px; min-height: 21px; padding: 1px 2px; box-sizing: border-box; line-height: 1; font-size: 14px; border-radius: 2px; }
-.sya-picker-grid .sya-combination-swatch { width: auto; max-width: 100%; gap: 5px; padding: 2px 6px; }
-.sya-picker-section--combinations .sya-picker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.sya-picker-section--combinations .sya-combination-swatch { width: 100%; min-width: 0; justify-content: flex-start; }
-.sya-combination-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-.sya-combination-swatch .sya-swatch__sample { flex-shrink: 0; }
+.sya-picker-section--combinations .sya-picker-grid { gap: 4px; }
 .sya-picker-help { margin: 9px 0 0; color: var(--sya-muted, var(--b3-theme-on-surface)); font-size: 11px; line-height: 1.6; }
 .sya-picker-defaults { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .sya-picker-defaults > .sya-button { flex: 1; }

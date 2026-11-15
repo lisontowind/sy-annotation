@@ -12,6 +12,7 @@ import { getDocumentDOM, getBlockDOMs } from "./api";
 import {
   applyAnnotation,
   focusAnnotation,
+  readSelectionStyle,
   selectedSegments,
   validateSelection,
   type EditorSelection,
@@ -128,6 +129,15 @@ export default class AnnotationPlugin extends Plugin {
     },
     showToolbar: () => this.showToolbar(),
     manageTool: (id, create) => this.openManager(id, create),
+    createToolFromSelection: () => {
+      this.captureSelection();
+      try {
+        const style = readSelectionStyle(this.savedSelection);
+        this.openManager(undefined, true, style);
+      } catch (error) {
+        showMessage(error instanceof Error ? error.message : t("读取失败"));
+      }
+    },
     deleteTool: (id) => {
       void this.commitTools(
         this.config.tools.filter((tool) => tool.id !== id),
@@ -360,7 +370,7 @@ export default class AnnotationPlugin extends Plugin {
       }
     }
   }
-  private openManager(id?: string, create = false): void {
+  private openManager(id?: string, create = false, initialStyle?: Pick<AnnotationTool, "marks" | "styles">): void {
     this.manager?.close();
     this.manager = new ToolManager(
       this.config.tools,
@@ -368,6 +378,7 @@ export default class AnnotationPlugin extends Plugin {
       id,
       create,
       () => void this.openColorRepair(),
+      initialStyle,
     );
   }
   private onNativeStyles = (): void => {

@@ -112,6 +112,7 @@ export interface UIActions {
   navigate(id: string, annotation?: Annotation): void;
   closeToolbar(): void;
   manageTool(id?: string, create?: boolean): void;
+  createToolFromSelection?(): void;
   deleteTool(id: string): void;
   locate(): void;
   toggleFollow(): void;
@@ -139,24 +140,16 @@ export class AnnotationToolbar {
     );
     this.element.setAttribute("role", "toolbar");
     this.element.setAttribute("aria-label", t("标注工具栏"));
-    this.picker = new StylePicker(id => this.actions.chooseStyle(id), { context: (tool, event) => this.showContext(tool, event) });
+    this.picker = new StylePicker(id => this.actions.chooseStyle(id), {
+      context: (tool, event) => this.showContext(tool, event),
+      manageTools: () => this.actions.manageTool(),
+      createTool: this.actions.createToolFromSelection,
+    });
     this.palette.append(this.picker.element);
     this.element.addEventListener("mousedown", (event) =>
       event.preventDefault(),
     );
-    const manager = element("div", "sya-tool-manager-buttons");
-    manager.append(
-      button("sya-icon-button sya-new-tool", t("新建标注工具"), icon("plus"), () =>
-        actions.manageTool(undefined, true),
-      ),
-      button(
-        "sya-icon-button sya-manage-tools",
-        t("设置标注工具"),
-        icon("settings"),
-        () => actions.manageTool(),
-      ),
-    );
-    this.element.append(this.palette, manager);
+    this.element.append(this.palette);
     const controls = element("div", "sya-tools__controls");
     controls.append(
       button(

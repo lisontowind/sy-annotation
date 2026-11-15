@@ -47,7 +47,9 @@ try {
     window.annotationPreview.setNativeStyles(data);
   });
   await page.waitForFunction(() => window.annotationPreview.plugin.availableTools.some(tool => tool.id === "native:custom:20261115090002-themebg"));
-  await page.locator(".sya-new-tool").click();
+  await page.locator(".sya-panel .sya-palette summary").click();
+  await page.locator(".sya-panel .sya-manage-tools").click();
+  await page.getByRole("button", { name: "新建工具", exact: true }).click();
   await page.locator('[data-field="label"]').fill("原生配色组合");
   await selectStyle(page, '.sya-manager [data-color-property="color"]', "native:color:3");
   await selectStyle(page, '.sya-manager [data-color-property="background-color"]', "native:custom:20261115090002-themebg");

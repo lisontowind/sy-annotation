@@ -1,3 +1,21 @@
+# 标注大纲 / Annotation Outline 0.4.3
+
+## 中文
+
+- 修复链接、块引用及局部上下标将同一段标注拆成多条的问题；夹在相同样式片段之间、未单独着色的上下标块引用也会归入整段。
+- 保留链接与块引用身份、备注内容和局部上下标范围，整段搜索、定位、筛选及两种替换模式保持一致。
+- 统一处理思源上下标中的 U+2060 编辑标记，修正定位与替换的文字偏移；普通未标注文字、不同颜色及跨块边界仍分开处理。
+- 新增单元、浏览器和真实思源回归，验证保存、引用身份、撤销及关闭重开。
+
+## English
+
+- Fixed links, block references and local superscripts/subscripts splitting a single annotation. Uncolored script citations between matching styled segments now belong to the whole annotation.
+- Preserved link/reference identities, memo content and exact script ranges across search, navigation, filtering and both replacement modes.
+- Normalized SiYuan’s U+2060 script markers to keep navigation and replacement offsets accurate. Ordinary unmarked text, different colors and block boundaries remain separate.
+- Added unit, browser and native SiYuan regression coverage for saved content, reference identities, undo and fresh reopening.
+
+---
+
 # 标注大纲 / Annotation Outline 0.4.2
 
 ## 中文

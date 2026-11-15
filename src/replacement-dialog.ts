@@ -4,10 +4,10 @@ import { t } from "./i18n";
 import type { Annotation, AnnotationTool } from "./model";
 import { appearanceOf, visualSignature, type ColorEnvironment } from "./appearance";
 import type { AnnotationQuery } from "./filters";
-import type { ReplacementMode, ReplacementPlan, ProgressReporter } from "./replacement";
+import { replacedAppearance, type ReplacementMode, type ReplacementPlan, type ProgressReporter } from "./replacement";
 import { BatchProgressView } from "./batch-progress";
 import { selectOptions, styleChoices } from "./filter-dialog";
-import { button, element, icon, renderToolPreview } from "./ui";
+import { button, element, icon, renderAnnotationPreview, renderToolPreview } from "./ui";
 
 export interface BatchSpec { sourceKind: "tool" | "signature"; source: string; targetId: string; scope: "document" | "filtered"; query: AnnotationQuery; mode: ReplacementMode; }
 export class ReplacementDialog {
@@ -118,8 +118,8 @@ export class ReplacementDialog {
       } else this.examples.append(element("p", "sya-batch-empty", plan.matched ? t("当前选择不会改变标注样式") : t("没有匹配的标注")));
       for (const example of plan.examples) {
         const row = element("div", "sya-batch-example");
-        const before = element("span", "sya-card__sample", example.before.text); renderToolPreview(before, { id: "", label: "", color: "", ...appearanceOf(example.before) });
-        const after = element("span", "sya-card__sample", example.before.text); renderToolPreview(after, { id: "", label: "", color: "", ...example.after });
+        const before = element("span", "sya-card__sample"); renderAnnotationPreview(before, example.before);
+        const after = element("span", "sya-card__sample"); renderAnnotationPreview(after, example.before, source => replacedAppearance(source, plan.target, plan.mode));
         row.append(before, element("span", "", "→"), after); this.examples.append(row);
       }
     } catch (error) { if (!this.closed && !controller.signal.aborted && sequence === this.sequence) { this.progress.stop(); this.status.dataset.state = "error"; this.status.textContent = error instanceof Error ? error.message : t("预览失败"); } }

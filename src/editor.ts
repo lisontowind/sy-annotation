@@ -288,7 +288,7 @@ export function focusAnnotation(
     const rawOffset = (target: number) => {
       let visible = 0;
       for (let i = 0; i < node.length; i++) {
-        if (/[\u200b\ufeff]/.test(node.data[i])) continue;
+        if (/[\u200b\u2060\ufeff]/.test(node.data[i])) continue;
         if (visible === target) return i;
         visible++;
       }

@@ -42,7 +42,8 @@ test("visual signatures ignore link/reference semantics and normalize colors and
 });
 test("replacement strips inherited formatting exactly while preserving links, references and surrounding text", () => {
   installDOM();
-  const html = p("p", '<strong><span data-type="u text" style="color:#ff0000;background-color:#ffff00;text-decoration-style:wavy">重复<a data-type="a" href="https://example.com">重复</a><span data-type="block-ref" data-id="ref">引用</span></span></strong>未改');
+  // A real typography difference isolates the link; link identity itself no longer splits runs.
+  const html = p("p", '<strong><span data-type="u text" style="color:#ff0000;background-color:#ffff00;text-decoration-style:wavy">重复<a data-type="a" href="https://example.com" style="font-size:20px">重复</a><span data-type="block-ref" data-id="ref">引用</span></span></strong>未改');
   const annotations = parseAnnotations(html).annotations;
   const selected = annotations.find((a) => a.text === "重复" && a.start === 2)!;
   assert.ok(selected);

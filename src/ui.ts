@@ -1,6 +1,7 @@
 import { t, toolLabel } from "./i18n";
 import {
   buildOutline,
+  annotationRuns,
   STYLES,
   type Annotation,
   type AnnotationTool,
@@ -11,7 +12,7 @@ import { VirtualList, type VirtualRow } from "./virtual-list";
 import { browserColor } from "./theme-colors";
 import { nativeStyles, isNativeToolId } from "./native-styles";
 import { StylePicker } from "./style-picker";
-import { appearanceOf as annotationAppearance, paintStrip, visibleColor, GRAY as DEFAULT_MARK_COLOR, MARK_BACKGROUND as NATIVE_MARK_BACKGROUND, readColorEnvironment } from "./appearance";
+import { appearanceOf as annotationAppearance, paintStrip, visibleColor, GRAY as DEFAULT_MARK_COLOR, MARK_BACKGROUND as NATIVE_MARK_BACKGROUND, readColorEnvironment, type Appearance } from "./appearance";
 import { emptyQuery, QueryEngine, ruleCount, type AnnotationQuery, type QueryRequest, type QueryResult } from "./filters";
 import { FilterDialog, selectOptions } from "./filter-dialog";
 import type { ReplacementMode } from "./replacement";
@@ -103,6 +104,20 @@ export function renderToolPreview(
     : tool.marks.includes("sub")
       ? "sub"
       : node.style.verticalAlign;
+}
+export function renderAnnotationPreview(node: HTMLElement, annotation: Annotation, transform: (appearance: Appearance) => Appearance = appearance => appearance): void {
+  node.textContent = annotation.text;
+  if (!annotation.runs) {
+    renderToolPreview(node, { id: "", label: "", color: "", ...transform(annotationAppearance(annotation)) });
+    return;
+  }
+  node.removeAttribute("style");
+  node.replaceChildren();
+  for (const run of annotationRuns(annotation)) {
+    const span = element("span", "", annotation.text.slice(run.start - annotation.start, run.end - annotation.start));
+    renderToolPreview(span, { id: "", label: "", color: "", ...transform(annotationAppearance(run)) });
+    node.append(span);
+  }
 }
 export interface UIActions {
   chooseStyle(id: string): void;
@@ -623,12 +638,7 @@ export class AnnotationPanel {
     card.style.width = `calc(100% - ${Math.min(depth, 5) * 10}px)`;
     const text = element("span", "sya-card__text");
     const sample = element("span", "sya-card__sample", annotation.text);
-    renderToolPreview(sample, {
-      id: annotation.styleId,
-      label: annotation.label,
-      color: toolAccentColor(appearance),
-      ...appearance,
-    });
+    renderAnnotationPreview(sample, annotation);
     text.append(sample);
     card.append(text);
     card.addEventListener("contextmenu", (event) => { event.preventDefault(); event.stopPropagation(); this.openCardMenu(annotation, event); });

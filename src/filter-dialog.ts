@@ -2,7 +2,7 @@ import { t, toolLabel } from "./i18n";
 import type { Annotation, AnnotationTool, Heading } from "./model";
 import { appearanceOf, appearanceLabel, visualProperties, visualSignature, type ColorEnvironment } from "./appearance";
 import { emptyRule, validRule, type FilterRule, type QueryRequest, type QueryResult, type AnnotationQuery, type RuleField } from "./filters";
-import { button, element, icon, renderToolPreview } from "./ui";
+import { button, element, icon, renderAnnotationPreview } from "./ui";
 import { nativeStyles } from "./native-styles";
 import { StylePicker } from "./style-picker";
 
@@ -26,7 +26,7 @@ export function styleChoices(annotations: Annotation[], env: ColorEnvironment): 
   return [...choices];
 }
 export function appendAppearance(node: HTMLElement, annotation: Annotation): void {
-  renderToolPreview(node, { ...appearanceOf(annotation), id: "", label: "", color: "" });
+  renderAnnotationPreview(node, annotation);
 }
 export class FilterDialog {
   readonly element = element("dialog", "sya-manager sya-filter-dialog");

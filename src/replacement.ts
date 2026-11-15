@@ -1,5 +1,5 @@
 import { t } from "./i18n";
-import { cleanText, parseAnnotations, STYLE_PROPERTIES, type Annotation, type AnnotationTool } from "./model";
+import { annotationRuns, cleanText, parseAnnotations, STYLE_PROPERTIES, type Annotation, type AnnotationTool } from "./model";
 import { appearanceOf, replacementSignature, VISUAL_MARKS, type Appearance, type ColorEnvironment } from "./appearance";
 import { browserColor } from "./theme-colors";
 
@@ -39,6 +39,12 @@ export function replacedAppearance(source: Appearance, target: AnnotationTool, m
   for (const mark of target.marks) if (!marks.includes(mark)) marks.push(mark);
   Object.assign(styles, target.styles);
   return { marks, styles };
+}
+export function replacementChanges(annotation: Annotation, target: AnnotationTool, mode: ReplacementMode, env: ColorEnvironment): boolean {
+  return annotationRuns(annotation).some(run => {
+    const source = appearanceOf(run);
+    return replacementSignature(source, env) !== replacementSignature(replacedAppearance(source, target, mode), env);
+  });
 }
 function stripInline(element: HTMLElement, target: AnnotationTool, mode: ReplacementMode): HTMLElement {
   const mark = TAG_MARKS[element.tagName];
@@ -88,9 +94,9 @@ export function replaceBlock(html: string, annotations: Annotation[], target: An
   const id = annotations[0]?.blockId;
   if (!id || annotations.some((a) => a.blockId !== id)) throw new Error(t("标注块不一致"));
   const fresh = parseAnnotations(html, tools).annotations;
-  for (const a of annotations) if (!fresh.some((b) => b.blockId === id && b.start === a.start && b.end === a.end && b.text === a.text && b.signature === a.signature))
+  for (const a of annotations) if (!fresh.some((b) => b.blockId === id && b.start === a.start && b.end === a.end && b.text === a.text && b.signature === a.signature && JSON.stringify(b.runs) === JSON.stringify(a.runs)))
     throw new Error(t("原文或样式已变化，请重新预览"));
-  const ranges = annotations.filter((a) => replacementSignature(appearanceOf(a), env) !== replacementSignature(replacedAppearance(appearanceOf(a), target, mode), env)).sort((a, b) => a.start - b.start);
+  const ranges = annotations.filter((a) => replacementChanges(a, target, mode, env)).sort((a, b) => a.start - b.start);
   if (!ranges.length) return { id, before: html, after: html, count: 0 };
   for (let i = 1; i < ranges.length; i++) if (ranges[i].start < ranges[i - 1].end) throw new Error(t("待修改范围重叠"));
   const template = document.createElement("template"); template.innerHTML = html;
@@ -106,7 +112,7 @@ export function replaceBlock(html: string, annotations: Annotation[], target: An
       const boundaries = new Set([0, length]);
       for (const range of ranges) { if (range.start > start && range.start < offset) boundaries.add(range.start - start); if (range.end > start && range.end < offset) boundaries.add(range.end - start); }
       const points = [...boundaries].sort((a, b) => a - b);
-      const rawAt = (visible: number) => { let count = 0; for (let i = 0; i < raw.length; i++) { if (count === visible) return i; if (!/[\u200b\ufeff]/.test(raw[i])) count++; } return raw.length; };
+      const rawAt = (visible: number) => { let count = 0; for (let i = 0; i < raw.length; i++) { if (count === visible) return i; if (!/[\u200b\u2060\ufeff]/.test(raw[i])) count++; } return raw.length; };
       const result: Piece[] = [];
       for (let i = 0; i < points.length - 1; i++) {
         const selected = ranges.some((range) => start + points[i] >= range.start && start + points[i + 1] <= range.end);

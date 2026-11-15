@@ -82,7 +82,7 @@ export const STYLE_PROPERTIES = new Set([
   "font-style",
   "vertical-align",
 ]);
-export const cleanText = (text: string) => text.replace(/[\u200b\ufeff]/g, "");
+export const cleanText = (text: string) => text.replace(/[\u200b\u2060\ufeff]/g, "");
 export function parseStyles(value: string): Record<string, string> {
   return Object.fromEntries(
     value
@@ -185,7 +185,13 @@ export interface Annotation {
   label: string;
   color: string;
   signature: string;
+  /** Exact formatting ranges when local superscripts/subscripts share one annotation. */
+  runs?: AnnotationRun[];
   headings: Heading[];
+}
+export interface AnnotationRun { start: number; end: number; signature: string; }
+export function annotationRuns(annotation: Pick<Annotation, "start" | "end" | "signature" | "runs">): AnnotationRun[] {
+  return annotation.runs ?? [{ start: annotation.start, end: annotation.end, signature: annotation.signature }];
 }
 export interface OutlineNode {
   heading: Heading | null;
@@ -345,11 +351,15 @@ function ownContent(block: AstElement, tools: AnnotationTool[]): OwnContent {
   const id = attrs(block)["data-node-id"];
   let offset = 0;
   let previous: Omit<Annotation, "headings"> | null = null;
+  let previousGroup = "";
+  let pendingText = "";
+  let pendingRuns: AnnotationRun[] = [];
   const result: OwnContent = { text: "", annotations: [] };
   function visit(
     node: AstNode,
     inheritedMarks: string[],
     inheritedStyles: Record<string, string>,
+    inlineIdentity = false,
   ) {
     if (node !== block) {
       const a = attrs(node);
@@ -367,13 +377,30 @@ function ownContent(block: AstElement, tools: AnnotationTool[]): OwnContent {
       result.text += text;
       const format = describe(inheritedMarks, inheritedStyles, tools);
       if (format) {
+        // Script positioning is local typography within the surrounding annotation.
+        // Keep its exact runs for rendering, filtering and replacement validation.
+        const baseStyles = { ...inheritedStyles };
+        if (["super", "sub"].includes(baseStyles["vertical-align"])) delete baseStyles["vertical-align"];
+        const base = inheritedMarks.some(mark => mark === "sup" || mark === "sub") || baseStyles["vertical-align"] !== inheritedStyles["vertical-align"]
+          ? describe(inheritedMarks.filter(mark => mark !== "sup" && mark !== "sub"), baseStyles, tools) : format;
+        const group = base?.signature ?? format.signature;
         if (
           previous &&
-          previous.signature === format.signature &&
-          previous.end === offset
+          previousGroup === group &&
+          previous.end + pendingText.length === offset
         ) {
-          previous.text += text;
-          previous.end += text.length;
+          if (previous.runs || pendingRuns.length || previous.signature !== format.signature) {
+            const runs = previous.runs ?? annotationRuns(previous);
+            for (const run of [...pendingRuns, { start: offset, end: offset + text.length, signature: format.signature }]) {
+              const last = runs[runs.length - 1];
+              if (last.signature === run.signature) last.end = run.end;
+              else runs.push(run);
+            }
+            previous.runs = runs;
+            Object.assign(previous, base ?? format);
+          }
+          previous.text += pendingText + text;
+          previous.end = offset + text.length;
         } else {
           previous = {
             key: `${id}:${offset}:${format.signature}`,
@@ -385,7 +412,19 @@ function ownContent(block: AstElement, tools: AnnotationTool[]): OwnContent {
           };
           result.annotations.push(previous);
         }
-      } else previous = null;
+        previousGroup = group;
+        pendingText = ""; pendingRuns = [];
+      } else {
+        // SiYuan can leave a citation/link/script uncolored between two identically
+        // highlighted spans. Buffer only these inline tokens, never ordinary gaps.
+        const script = inheritedMarks.some(mark => mark === "sup" || mark === "sub") || ["super", "sub"].includes(inheritedStyles["vertical-align"]);
+        const bridge = (inlineIdentity || script) && inheritedMarks.every(mark => mark === "sup" || mark === "sub") &&
+          Object.entries(inheritedStyles).every(([key, value]) => key === "vertical-align" && ["super", "sub"].includes(value));
+        if (previous && bridge) {
+          pendingText += text;
+          pendingRuns.push({ start: offset, end: offset + text.length, signature: styleSignature(inheritedMarks, inheritedStyles) });
+        } else { previous = null; pendingText = ""; pendingRuns = []; }
+      }
       offset += text.length;
       return;
     }
@@ -410,8 +449,8 @@ function ownContent(block: AstElement, tools: AnnotationTool[]): OwnContent {
           : (a["data-type"] ?? "")
               .split(" ")
               .filter(
-                // A memo changes inline metadata, not the annotation's formatting.
-                (type) => type && !type.startsWith("Node") && type !== "text" && type !== "inline-memo",
+                // Link/reference/memo identities do not change annotation formatting.
+                (type) => type && !type.startsWith("Node") && !["text", "inline-memo", "a", "block-ref"].includes(type),
               )),
         ...(tags[node.nodeName] ? [tags[node.nodeName]] : []),
       ]),
@@ -420,7 +459,8 @@ function ownContent(block: AstElement, tools: AnnotationTool[]): OwnContent {
       ...inheritedStyles,
       ...(node === block ? {} : parseStyles(a.style ?? "")),
     };
-    for (const child of children(node)) visit(child, marks, styles);
+    const identity = inlineIdentity || node.nodeName === "a" || /(?:^|\s)(?:a|block-ref)(?:\s|$)/.test(a["data-type"] ?? "");
+    for (const child of children(node)) visit(child, marks, styles, identity);
   }
   visit(block, [], {});
   result.annotations = result.annotations.filter((item) => item.text.trim());

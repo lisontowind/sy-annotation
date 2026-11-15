@@ -1,4 +1,4 @@
-import type { Annotation, AnnotationTool } from "./model";
+import { annotationRuns, type Annotation, type AnnotationTool } from "./model";
 import { matchesNativeStyle, nativeDefaultGroup, nativeRef } from "./native-styles";
 import { appearanceOf, resolveValue, visualProperties, visualSignature, resolveSignature, type Appearance, type ColorEnvironment } from "./appearance";
 
@@ -34,6 +34,7 @@ export class QueryEngine {
     return value;
   }
   private tool(annotation: Annotation, id: string): boolean {
+    if (annotation.runs) return annotation.runs.some(run => this.tool({ ...annotation, ...run, runs: undefined }, id));
     let matches = this.toolMatches.get(annotation.signature);
     if (!matches) { matches = new Map(); this.toolMatches.set(annotation.signature, matches); }
     if (matches.has(id)) return matches.get(id)!;
@@ -76,8 +77,12 @@ export class QueryEngine {
       case "heading": matched = rule.value === "__intro__" ? !annotation.headings.length : annotation.headings.some((h) => h.id === rule.value); break;
       case "color": case "background-color": matched = (p[rule.field] || "__unset__") === resolveValue(rule.value, this.environment); break;
       case "line": matched = p["text-decoration-line"]?.includes("underline") ? p["text-decoration-style"] === rule.value : rule.value === "__unset__"; break;
+      case "sup": case "sub": {
+        const present = annotationRuns(annotation).some(run => this.properties({ ...annotation, ...run })["vertical-align"] === (rule.field === "sup" ? "super" : "sub"));
+        matched = present === (rule.value === "yes"); break;
+      }
       default: {
-        const effect = { strong: p["font-weight"] === "bold", em: p["font-style"] === "italic", s: !!p["text-decoration-line"]?.includes("line-through"), sup: p["vertical-align"] === "super", sub: p["vertical-align"] === "sub", shadow: !!p["text-shadow"], hollow: !!p["-webkit-text-stroke"] }[rule.field];
+        const effect = { strong: p["font-weight"] === "bold", em: p["font-style"] === "italic", s: !!p["text-decoration-line"]?.includes("line-through"), shadow: !!p["text-shadow"], hollow: !!p["-webkit-text-stroke"] }[rule.field];
         matched = effect === (rule.value === "yes");
       }
     }

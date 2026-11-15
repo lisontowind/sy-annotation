@@ -21,6 +21,7 @@ import {
   loadToolConfig,
   parseAnnotations,
   applyAnnotationDelta,
+  annotationRuns,
   type Annotation,
   type AnnotationTool,
   type BlockChange,
@@ -40,7 +41,7 @@ import { IndexClient } from "./index-client";
 import { transactionChanges } from "./changes";
 import { QueryEngine, type AnnotationQuery, type QueryRequest } from "./filters";
 import { appearanceOf, readColorEnvironment, visualSignature, replacementSignature, type ColorEnvironment } from "./appearance";
-import { replaceBlock, replacedAppearance, snapshotBlocks, type BlockEditPlan, type ReplacementPlan, type ReplacementMode, type ProgressReporter } from "./replacement";
+import { replaceBlock, replacedAppearance, replacementChanges, snapshotBlocks, type BlockEditPlan, type ReplacementPlan, type ReplacementMode, type ProgressReporter } from "./replacement";
 import { repairAppearance, repairBlock, repairCandidates, repairTools, type ColorMapping } from "./color-repair";
 import { ColorRepairDialog, type ColorRepairPlan, type RepairScope } from "./color-repair-dialog";
 import { ReplacementDialog } from "./replacement-dialog";
@@ -50,10 +51,13 @@ import { nativeStyles, isNativeToolId, nativeUnavailableMessage } from "./native
 function parseAnnotationsForVerification(html: string, tools: AnnotationTool[], environment: ColorEnvironment = readColorEnvironment()): unknown[] {
   const result: { id: string; start: number; end: number; text: string; style: string }[] = [];
   for (const a of parseAnnotations(html, tools).annotations) {
-    const style = replacementSignature(appearanceOf(a), environment);
-    const last = result[result.length - 1];
-    if (last?.id === a.blockId && last.end === a.start && last.style === style) { last.end = a.end; last.text += a.text; }
-    else result.push({ id: a.blockId, start: a.start, end: a.end, text: a.text, style });
+    for (const run of annotationRuns(a)) {
+      const style = replacementSignature(appearanceOf(run), environment);
+      const text = a.text.slice(run.start - a.start, run.end - a.start);
+      const last = result[result.length - 1];
+      if (last?.id === a.blockId && last.end === run.start && last.style === style) { last.end = run.end; last.text += text; }
+      else result.push({ id: a.blockId, start: run.start, end: run.end, text, style });
+    }
   }
   return result;
 }
@@ -854,7 +858,7 @@ export default class AnnotationPlugin extends Plugin {
     }
   }
   private publish(index: DocumentIndex): void {
-    const key = JSON.stringify([index.order, index.headings, index.annotations.map((a) => [a.blockId, a.start, a.end, a.text, a.signature, a.headings.map((h) => h.id)])]);
+    const key = JSON.stringify([index.order, index.headings, index.annotations.map((a) => [a.blockId, a.start, a.end, a.text, a.signature, a.runs, a.headings.map((h) => h.id)])]);
     if (key !== this.contentKey) { this.contentKey = key; this.contentVersion++; this.repairDialog?.stateChanged(); }
     this.index = index;
     for (const panel of this.panels) panel.setAnnotations(index.annotations, index.headings);
@@ -1018,7 +1022,7 @@ export default class AnnotationPlugin extends Plugin {
     if (this.loading || this.patching) await this.flushForReplacement(signal);
     if (this.disposed || rootId !== this.rootId || epoch !== this.documentEpoch || version !== this.contentVersion || JSON.stringify(target) !== JSON.stringify(this.availableTools.find((t) => t.id === toolId))) throw new Error(t("内容或工具已变化，请重新预览"));
     plan.blocks = results.filter((b) => b.count > 0); plan.changed = plan.blocks.reduce((sum, b) => sum + b.count, 0);
-    plan.examples = annotations.filter((a) => replacementSignature(appearanceOf(a), environment) !== replacementSignature(replacedAppearance(appearanceOf(a), target, mode), environment)).slice(0, 5).map((before) => ({ before, after: replacedAppearance(appearanceOf(before), target, mode) }));
+    plan.examples = annotations.filter((a) => replacementChanges(a, target, mode, environment)).slice(0, 5).map((before) => ({ before, after: replacedAppearance(appearanceOf(before), target, mode) }));
     this.replacementContexts.set(plan, { epoch, version, protyle, environment, snapshot: entries.length >= 32, tools: JSON.stringify(this.config.tools) });
     return plan;
   }

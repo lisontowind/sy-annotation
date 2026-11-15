@@ -1,6 +1,6 @@
 {
   "name": "sy-annotation",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "type": "module",
   "description": "思源文档标注汇总与连续标注插件",
@@ -11,7 +11,8 @@
     "test": "node scripts/test.mjs",
     "test:browser": "node scripts/browser-test.mjs && node scripts/browser-v3-test.mjs && node scripts/browser-v31-test.mjs && node scripts/browser-location-test.mjs && node scripts/browser-i18n-test.mjs && node scripts/browser-theme-test.mjs && node scripts/browser-native-styles-test.mjs",
     "test:perf": "node scripts/sidebar-perf.mjs --label=optimized --verify",
-    "test:native": "node scripts/native-test.mjs && node scripts/native-v3-test.mjs && node scripts/native-v31-test.mjs && node scripts/native-color-controls-test.mjs && node scripts/native-semantics-test.mjs && node scripts/native-theme-test.mjs && node scripts/native-styles-test.mjs",
+    "test:native": "node scripts/native-test.mjs && node scripts/native-v3-test.mjs && node scripts/native-v31-test.mjs && node scripts/native-color-controls-test.mjs && node scripts/native-semantics-test.mjs && node scripts/native-theme-test.mjs && node scripts/native-styles-test.mjs && node scripts/native-memo-test.mjs",
+    "test:native:memo": "npm run build && node scripts/native-memo-test.mjs",
     "package": "npm run typecheck && npm test && npm run build && node scripts/package.mjs",
     "preview": "node scripts/preview.mjs",
     "assets:marketplace": "node scripts/marketplace-assets.mjs --native",

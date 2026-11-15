@@ -1,3 +1,19 @@
+# 标注大纲 / Annotation Outline 0.4.2
+
+## 中文
+
+- 修复连续标注中间添加行内备注后，侧栏条目被拆分的问题；同一块内连续且格式一致的标注保持一条。
+- 保留备注内容、备注范围与真实样式边界，支持完整搜索、定位及两种替换模式。
+- 补充备注回归测试，并在思源 3.8.10 验证保存、撤销/重做、批量修改一次撤销、关闭后重开及 `.sy` 文件落盘结果。
+
+## English
+
+- Fixed inline memos splitting a continuous annotation into multiple sidebar entries. Contiguous text with identical formatting stays together within a block.
+- Preserved memo content, memo scope and real formatting boundaries, including full-text search, navigation and both replacement modes.
+- Added memo regression coverage and validated native save, undo/redo, one-step batch undo, reopening and persisted `.sy` files in SiYuan 3.8.10.
+
+---
+
 # 标注大纲 / Annotation Outline 0.4.1
 
 ## 中文

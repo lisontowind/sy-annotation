@@ -80,7 +80,7 @@ Third-party themes can produce different results.
 
 ## Installation and compatibility
 
-Current version: **0.4.1**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
+Current version: **0.4.2**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
 
 **Chinese and English interfaces are supported.** The plugin follows SiYuan's interface language. Change SiYuan's language and restart as prompted. The sidebar, toolbar, filters, batch changes, tool settings and messages are localized. Custom tool names and document content stay as you wrote them.
 
@@ -105,7 +105,7 @@ Tool settings are stored in `data/storage/petal/sy-annotation/tools.json`. Conti
 
 - Only editable document text can be annotated. Code/HTML/embed blocks, databases, inline formulas and read-only content are excluded.
 - Plain bold or italic text is not collected by default. Recognizable colors, highlights, lines and combinations matching custom tools are collected.
-- Adjacent segments with the same formatting may merge. Different line effects remain separate. The sidebar counts actual segments, which can differ from the number of annotation actions.
+- Contiguous segments with identical formatting merge within a block. Inline memos preserve their content and scope without splitting an annotation. Real formatting differences, unmarked gaps and block boundaries remain separate. The sidebar counts actual segments, which can differ from the number of annotation actions.
 - No additional annotation service is required. The plugin reads the current document and saves native text formatting through SiYuan's APIs.
 
 [Development and validation (Chinese)](docs/DEVELOPMENT.md) · [MIT License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)

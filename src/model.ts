@@ -410,7 +410,8 @@ function ownContent(block: AstElement, tools: AnnotationTool[]): OwnContent {
           : (a["data-type"] ?? "")
               .split(" ")
               .filter(
-                (type) => type && !type.startsWith("Node") && type !== "text",
+                // A memo changes inline metadata, not the annotation's formatting.
+                (type) => type && !type.startsWith("Node") && type !== "text" && type !== "inline-memo",
               )),
         ...(tags[node.nodeName] ? [tags[node.nodeName]] : []),
       ]),

@@ -80,7 +80,7 @@ Third-party themes can produce different results.
 
 ## Installation and compatibility
 
-Current version: **0.4.3**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
+Current version: **0.4.4**. Declared minimum SiYuan version: **3.2.0**. Native annotation, color management and default color restoration were validated in an isolated SiYuan **3.8.10** workspace. Chinese and English screenshots come from that workspace. Older versions without the native style library use built-in styles and show an update notice.
 
 **Chinese and English interfaces are supported.** The plugin follows SiYuan's interface language. Change SiYuan's language and restart as prompted. The sidebar, toolbar, filters, batch changes, tool settings and messages are localized. Custom tool names and document content stay as you wrote them.
 

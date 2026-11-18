@@ -1,6 +1,6 @@
 {
   "name": "sy-annotation",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "type": "module",
   "description": "思源文档标注汇总与连续标注插件",

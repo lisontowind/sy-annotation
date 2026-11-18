@@ -6,7 +6,7 @@ Annotation Outline is a desktop plugin for SiYuan Note. It collects highlights, 
 
 [简体中文](README.md) · [Development and validation (Chinese)](docs/DEVELOPMENT.md)
 
-![Annotation Outline overview](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/overview.png)
+![Annotation Outline overview](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/en/overview.png)
 
 > Images were captured in an isolated SiYuan 3.8.10 test workspace, using the real editor, built-in themes and dedicated sample documents. Screenshots use SiYuan's desktop browser interface. Appearance varies with the SiYuan version and theme. Documentation images load from pinned GitHub URLs and require an internet connection.
 
@@ -30,7 +30,7 @@ Open a document and the Annotation Outline dock on the right. Select a style in 
 
 Choosing a style alone does not change an existing selection or enable continuous annotation. The dock's pen button opens a floating toolbar; the SiYuan top-bar button and shortcut can also toggle it.
 
-![Choose a style and annotate](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-01-annotate.png)
+![Choose a style and annotate](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/en/usage-01-annotate.png)
 
 ## 2. Review in context
 
@@ -38,7 +38,7 @@ Cards are organized under their headings. Empty branches are hidden. Search anno
 
 The crosshair locates the annotation under the cursor or a nearby annotation in the same section. Double-click to enable automatic following. If filters hide the target, the plugin asks you to clear them without changing them automatically.
 
-![Review, search and locate annotations](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-02-outline.png)
+![Review, search and locate annotations](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/en/usage-02-outline.png)
 
 ## 3. Filter and change styles
 
@@ -51,7 +51,7 @@ Open “Batch restyle” to choose a source style, target tool, replacement mode
 
 You can also right-click a card to change it or prefill a batch for its exact style. A batch is saved as one native SiYuan undo operation. Preparation and validation can be canceled; once saving starts, wait for completion. Large batches take longer to save.
 
-![Combined filters and batch previews](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-03-filter-batch.png)
+![Combined filters and batch previews](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/en/usage-03-filter-batch.png)
 
 ## 4. Sync SiYuan styles and combine effects
 
@@ -63,7 +63,7 @@ Select uniformly styled text, then click the plus in Combination tools to create
 
 Editing a combination tool affects future actions. Editing a native color changes the appearance of all text referencing that style without rewriting the document. Use card replacement or batch changes to replace historical references. Saved formatting remains after uninstalling the plugin.
 
-![Customize annotation tools](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/usage-04-tools.png)
+![Customize annotation tools](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/en/usage-04-tools.png)
 
 ## Native style search and light/dark appearances
 
@@ -76,7 +76,7 @@ Existing fixed colors and light/dark expressions are preserved. Under **Migrate 
 
 Third-party themes can produce different results.
 
-![SiYuan built-in dark theme](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/en/interface-dark.png)
+![SiYuan built-in dark theme](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/en/interface-dark.png)
 
 ## Installation and compatibility
 

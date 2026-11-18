@@ -4,7 +4,7 @@
 
 标注大纲是一个思源笔记桌面端插件。它把当前文档中的高亮、文字颜色与划线，按标题层级整理到侧栏。阅读时随手标注，回顾时沿着章节找到重点，点击卡片就能跳回原文。
 
-![标注大纲：按章节回顾原文中的重点](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/overview.png)
+![标注大纲：按章节回顾原文中的重点](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/overview.png)
 
 > 展示图来自思源 3.8.10 的独立测试工作空间，使用真实编辑器、原生主题及专门创建的示例文档；截图采用桌面浏览器界面。实际外观随思源版本和主题变化。介绍图片通过固定版本的 GitHub 链接加载，需要联网查看。
 
@@ -30,7 +30,7 @@
 
 选择样式本身只切换工具，不改写已有选区，也不自动开启连续标注。侧栏右上角的画笔按钮可显示浮动工具栏，思源顶栏按钮和快捷键也可切换显示。
 
-![使用步骤一：选择样式，单次标注或连续划选](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-01-annotate.png)
+![使用步骤一：选择样式，单次标注或连续划选](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/usage-01-annotate.png)
 
 ## 2. 沿着标题，回顾你的重点
 
@@ -38,7 +38,7 @@
 
 单击准星按钮定位当前位置：光标在标注内时定位到对应卡片，否则寻找同章节附近的标注。双击准星锁定自动跟随，再次双击解除。若目标被筛选隐藏，插件会提示清除筛选，不会自行修改条件。
 
-![使用步骤二：按标题回顾、搜索与定位标注](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-02-outline.png)
+![使用步骤二：按标题回顾、搜索与定位标注](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/usage-02-outline.png)
 
 ## 3. 先筛出目标，再统一改样式
 
@@ -51,7 +51,7 @@
 
 也可以右键单张卡片快速改样式，或选择「批量修改相同样式」预填完整源样式。整批修改作为一次思源原生撤销操作。准备和校验期间可以取消；保存开始后请等待完成，数量较多时需要更长时间。
 
-![使用步骤三：组合筛选与批量修改前后预览](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-03-filter-batch.png)
+![使用步骤三：组合筛选与批量修改前后预览](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/usage-03-filter-batch.png)
 
 ## 4. 同步思源样式，补充组合工具
 
@@ -65,7 +65,7 @@
 
 **组合工具的名称和效果只影响后续操作。** 修改思源原生配色时，所有关联该样式的文字会随之改变外观，正文内容无需改写。需要替换历史样式引用时，使用卡片替换或批量修改；插件卸载后已保存的格式仍然保留。
 
-![使用步骤四：管理工具与组合标注样式](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/usage-04-tools.png)
+![使用步骤四：管理工具与组合标注样式](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/usage-04-tools.png)
 
 ## 原生样式查找与深浅色
 
@@ -77,7 +77,7 @@
 
 下图展示思源原生深色主题中的界面；第三方主题的最终效果可能不同。
 
-![思源原生深色主题中的标注大纲界面](https://raw.githubusercontent.com/lisontowind/sy-annotation/0.4.1/docs/assets/interface-dark.png)
+![思源原生深色主题中的标注大纲界面](https://cdn.jsdelivr.net/gh/lisontowind/sy-annotation@0.4.1/docs/assets/interface-dark.png)
 
 ## 安装与兼容
 
